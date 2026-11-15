@@ -3,6 +3,18 @@
 {{ define "document-title" }}{{ .Page.Title }}{{ end }}
 
 {{ define "document-head-after" }}
+<script>
+    // Kiosk mode, set with ?kiosk=1 and remembered by this browser until ?kiosk=0.
+    (function () {
+        try {
+            const q = new URLSearchParams(location.search);
+            if (q.has("kiosk")) localStorage.setItem("dashden-kiosk", q.get("kiosk") === "0" ? "0" : "1");
+            if (q.has("rotate")) localStorage.setItem("dashden-kiosk-rotate", String(Math.max(0, parseInt(q.get("rotate"), 10) || 0)));
+            if (localStorage.getItem("dashden-kiosk") === "1") document.documentElement.classList.add("kiosk");
+        } catch (e) {}
+    })();
+</script>
+<script src='{{ .App.StaticAssetPath "js/kiosk.js" }}' defer></script>
 <script type="module" src='{{ .App.StaticAssetPath "js/page.js" }}'></script>
 <script src='{{ .App.StaticAssetPath "js/docker-controller.js" }}'></script>
 <script src='{{ .App.StaticAssetPath "js/den-app.js" }}'></script>

@@ -13,6 +13,8 @@ type todoWidget struct {
 	cachedHTML template.HTML `yaml:"-"`
 	TodoID     string        `yaml:"id"`
 	Storage    string        `yaml:"storage"`
+	// PerPerson gives every signed-in person their own list under the same id.
+	PerPerson bool `yaml:"per-person"`
 	CollapseAfter *int       `yaml:"collapse-after"`
 }
 
@@ -25,6 +27,10 @@ func (widget *todoWidget) initialize() error {
 
 	if widget.Storage == "server" && widget.TodoID == "" {
 		return fmt.Errorf("storage \"server\" requires an \"id\" to be set")
+	}
+
+	if widget.PerPerson && widget.Storage != "server" {
+		return fmt.Errorf("per-person needs storage: server")
 	}
 
 	if widget.CollapseAfter != nil && *widget.CollapseAfter < -1 {

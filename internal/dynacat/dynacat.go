@@ -75,6 +75,8 @@ type application struct {
 	todoStorage      *todoStorage
 	userPrefs        *userPrefsStorage
 	todoListIDToPage map[string]*page
+	todoPerPerson    map[string]bool
+	noticeStorage    *noticeStorage
 
 	sseMu                sync.RWMutex
 	sseClients           map[*sseClient]struct{}
@@ -108,6 +110,7 @@ func newApplication(c *config) (*application, error) {
 		sseClients:             make(map[*sseClient]struct{}),
 		imageProxyURLs:         make(map[string]imageProxyInfo),
 		todoListIDToPage:       make(map[string]*page),
+		todoPerPerson:          make(map[string]bool),
 		searchAutocompleteURLs: make(map[uint64]searchAutocompleteSource),
 	}
 	config := &app.Config
@@ -340,6 +343,9 @@ func newApplication(c *config) (*application, error) {
 				case *todoWidget:
 					if v.Storage == "server" && v.TodoID != "" {
 						app.todoListIDToPage[v.TodoID] = page
+						if v.PerPerson {
+							app.todoPerPerson[v.TodoID] = true
+						}
 					}
 				case *groupWidget:
 					collectTodoListIDs(v.Widgets)
@@ -472,6 +478,20 @@ func newApplication(c *config) (*application, error) {
 			slog.Error("Could not initialize user preferences, theme choices won't follow people between devices", "path", dbPath, "error", err)
 			app.userPrefs = nil
 		}
+	}
+
+	for _, w := range app.widgetByID {
+		if _, ok := w.(*noticeBoardWidget); ok {
+			app.noticeStorage = newNoticeStorage(dbPath)
+			if err := app.noticeStorage.init(); err != nil {
+				slog.Error("Could not initialize the notice board database", "path", dbPath, "error", err)
+			}
+			break
+		}
+	}
+
+	if len(app.todoPerPerson) > 0 && !app.AnyAuthEnabled() {
+		return nil, fmt.Errorf("a to-do list with per-person needs sign-in to tell people apart")
 	}
 
 	if len(app.todoListIDToPage) > 0 {
@@ -907,6 +927,17 @@ func (a *application) authorizeTodoRequest(w http.ResponseWriter, r *http.Reques
 	}
 	if a.handleAccessControl(w, r, pg, showUnauthorizedJSON) {
 		return "", false
+	}
+	if a.todoPerPerson[listID] {
+		user := a.getAuthenticatedUser(w, r)
+		if user == nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte(`{"error": "Unauthorized"}`))
+			return "", false
+		}
+		// The unit separator keeps personal lists apart from any list id a
+		// config could contain.
+		return listID + "\x1f" + user.Username, true
 	}
 	return listID, true
 }

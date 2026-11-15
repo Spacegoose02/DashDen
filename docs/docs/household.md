@@ -45,3 +45,12 @@ DashDen refuses to start if a `home` isn't a page slug, a `theme` isn't a preset
 ## Themes that follow the person
 
 When anyone signs in, the theme they pick is stored in DashDen's database (`server.db-path`, by default `dynacat.db` in the assets folder) under their username. On any device they sign in from, DashDen uses, in order: their saved choice, their household `theme`, then the browser's own choice. Visitors who aren't signed in keep the per-browser behaviour.
+
+## Kiosk mode
+
+For a wall tablet or an old laptop in the kitchen. Open any page with `?kiosk=1` and Dynacat hides the header, navigation and footer, keeps the screen awake where the browser allows it, and hides the cursor when nobody is using it. The choice is remembered in that browser, so the tablet stays in kiosk mode after a restart.
+
+- `?kiosk=1&rotate=60` also moves to the next page every 60 seconds. Rotation waits while someone is touching the screen, and moves on once the screen has been left alone for that long. Use 10 seconds or more.
+- To leave kiosk mode, double-tap the top-right corner of the screen, or open the page with `?kiosk=0`.
+
+Kiosk mode only changes what that one browser shows. It doesn't sign anyone in, so pair it with a household member such as `kitchen` whose `allowed-groups` rules decide what the tablet can see.
