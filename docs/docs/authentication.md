@@ -231,6 +231,40 @@ auth:
 
 ---
 
+## Forward-Auth Proxy (Tinyauth, Authelia, Authentik)
+
+If a forward-auth proxy already guards your apps, DashDen can trust the identity it passes along instead of running its own login. Nobody sees a login page or a redirect, and there is no DashDen session to lose on restart.
+
+```yaml
+server:
+  trusted-proxies:
+    - 172.18.0.0/16   # the proxy's address or network; required
+
+auth:
+  proxy:
+    logout-url: https://auth.example.com/logout
+```
+
+That is all Tinyauth needs, because the header names default to Tinyauth's. Every option:
+
+| Option | Default | What it does |
+| ------ | ------- | ------------ |
+| `user-header` | `Remote-User` | Username. A request without it is not signed in |
+| `name-header` | `Remote-Name` | Full name, shown in the header instead of the username |
+| `email-header` | `Remote-Email` | Email address |
+| `groups-header` | `Remote-Groups` | Comma-separated groups, used by `allowed-groups` on pages and editing |
+| `login-url` | | Where `/login` sends someone who arrives without the headers |
+| `logout-url` | | Where the logout button sends a proxy user, so the proxy's session ends too |
+| `allowed-users`, `allowed-groups` | | Only these people may sign in. Empty allows everyone the proxy lets through |
+
+> [!IMPORTANT]
+>
+> The headers are only believed when the request comes straight from an address in `server.trusted-proxies`, and DashDen refuses to start with `auth.proxy` and no trusted proxies. Still, make sure DashDen's port is not reachable without going through the proxy.
+
+Tinyauth only sends groups for people who sign in through an OAuth provider that has them, or through LDAP. With Tinyauth's own local users, restrict pages with `allowed-users`.
+
+`auth.proxy` works alongside password users and OIDC. When it's the only method, `/login` redirects to `login-url` or answers 401.
+
 ## Per-Page Access Control
 
 Restrict individual pages to specific users or groups using `allowed-users` and `allowed-groups`:
