@@ -54,7 +54,8 @@ func (a *application) settingsJSON(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 		if r.Method != http.MethodGet {
-			if mt, _, _ := mime.ParseMediaType(r.Header.Get("Content-Type")); mt != "application/json" {
+			// A cross-site form can only POST, so DELETE needs no body or JSON type.
+			if mt, _, _ := mime.ParseMediaType(r.Header.Get("Content-Type")); mt != "application/json" && r.Method != http.MethodDelete {
 				writeJSONError(w, http.StatusUnsupportedMediaType, "expected application/json")
 				return
 			}

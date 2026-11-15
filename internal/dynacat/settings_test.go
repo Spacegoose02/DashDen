@@ -159,9 +159,12 @@ func TestSettingsRefusesCrossSiteWrites(t *testing.T) {
 	called := false
 	h := a.settingsJSON(func(w http.ResponseWriter, r *http.Request) { called = true })
 
-	send := func(contentType, origin string) int {
+	send := func(contentType, origin string, method ...string) int {
 		r := proxyRequest("10.0.0.5:1", map[string]string{"Remote-User": "mom"})
 		r.Method = "PUT"
+		if len(method) > 0 {
+			r.Method = method[0]
+		}
 		r.Host = "dash.example.com"
 		if contentType != "" {
 			r.Header.Set("Content-Type", contentType)
@@ -183,5 +186,11 @@ func TestSettingsRefusesCrossSiteWrites(t *testing.T) {
 	}
 	if send("application/json", "https://dash.example.com"); !called {
 		t.Fatal("a same-origin JSON request should go through")
+	}
+	if send("", "https://dash.example.com", "DELETE"); !called {
+		t.Fatal("a same-origin DELETE has no body and should go through")
+	}
+	if code := send("", "https://evil.example", "DELETE"); code != http.StatusForbidden || called {
+		t.Fatalf("a cross-origin DELETE must be refused, got %d", code)
 	}
 }
