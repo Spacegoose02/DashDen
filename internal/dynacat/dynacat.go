@@ -51,8 +51,10 @@ type application struct {
 	slugToPage    map[string]*page
 	widgetByID    map[uint64]widget
 	widgetByAPIID map[string]widget
-	widgetToPage  map[uint64]*page
-	searchTargets searchTargetRegistry
+	// rules from allowed-users/allowed-groups, inherited by a container's widgets
+	widgetAccessByID map[uint64]*widgetAccess
+	widgetToPage     map[uint64]*page
+	searchTargets    searchTargetRegistry
 
 	globalBackground string
 
@@ -71,6 +73,7 @@ type application struct {
 	oidcSessions *sessionStore
 
 	todoStorage      *todoStorage
+	userPrefs        *userPrefsStorage
 	todoListIDToPage map[string]*page
 
 	sseMu                sync.RWMutex
@@ -98,6 +101,7 @@ func newApplication(c *config) (*application, error) {
 		Config:                 *c,
 		slugToPage:             make(map[string]*page),
 		widgetByID:             make(map[uint64]widget),
+		widgetAccessByID:       make(map[uint64]*widgetAccess),
 		widgetByAPIID:          make(map[string]widget),
 		apiRateRequests:        make(map[string]*apiRateWindow),
 		widgetToPage:           make(map[uint64]*page),
@@ -218,6 +222,10 @@ func newApplication(c *config) (*application, error) {
 	config.Theme.Key = "default"
 	if err := config.Theme.init(); err != nil {
 		return nil, fmt.Errorf("initializing default theme: %v", err)
+	}
+
+	if err := app.prepareSeasonalThemes(); err != nil {
+		return nil, err
 	}
 
 	config.Server.BaseURL = strings.TrimRight(config.Server.BaseURL, "/")
@@ -341,8 +349,14 @@ func newApplication(c *config) (*application, error) {
 			}
 		}
 
-		var registerWidget func(widget widget)
-		registerWidget = func(widget widget) {
+		var registerWidget func(widget widget, rules *widgetAccess)
+		registerWidget = func(widget widget, rules *widgetAccess) {
+			if own := widget.access(); own != nil {
+				rules = own
+			}
+			if rules != nil {
+				app.widgetAccessByID[widget.GetID()] = rules
+			}
 			app.widgetByID[widget.GetID()] = widget
 			app.widgetToPage[widget.GetID()] = page
 			if apiID := widget.GetAPIID(); apiID != "" {
@@ -353,17 +367,17 @@ func newApplication(c *config) (*application, error) {
 			switch v := widget.(type) {
 			case *groupWidget:
 				for i := range v.Widgets {
-					registerWidget(v.Widgets[i])
+					registerWidget(v.Widgets[i], rules)
 				}
 			case *splitColumnWidget:
 				for i := range v.Widgets {
-					registerWidget(v.Widgets[i])
+					registerWidget(v.Widgets[i], rules)
 				}
 			}
 		}
 
 		for i := range page.HeadWidgets {
-			registerWidget(page.HeadWidgets[i])
+			registerWidget(page.HeadWidgets[i], nil)
 		}
 		collectTodoListIDs(page.HeadWidgets)
 
@@ -375,7 +389,7 @@ func newApplication(c *config) (*application, error) {
 			}
 
 			for w := range column.Widgets {
-				registerWidget(column.Widgets[w])
+				registerWidget(column.Widgets[w], nil)
 			}
 			collectTodoListIDs(column.Widgets)
 		}
@@ -404,9 +418,15 @@ func newApplication(c *config) (*application, error) {
 		}
 	}
 
+	if err := app.checkHouseholdHomePages(); err != nil {
+		return nil, err
+	}
+	app.prepareHousehold()
+
 	app.warnAboutAPIExposure()
 	app.setupEditorLoginRequirement()
 	app.warnAboutEditorExposure()
+	warnAboutRecoveryCode()
 
 	config.Theme.CustomCSSFile = app.resolveUserDefinedAssetPath(config.Theme.CustomCSSFile)
 	config.Branding.LogoURL = app.resolveUserDefinedAssetPath(config.Branding.LogoURL)
@@ -441,11 +461,20 @@ func newApplication(c *config) (*application, error) {
 	}
 	app.parsedManifest = []byte(manifest)
 
-	if len(app.todoListIDToPage) > 0 {
-		dbPath := config.Server.DBPath
-		if dbPath == "" {
-			dbPath = filepath.Join(config.assetsPath(), "dynacat.db")
+	dbPath := config.Server.DBPath
+	if dbPath == "" {
+		dbPath = filepath.Join(config.assetsPath(), "dynacat.db")
+	}
+
+	if app.AnyAuthEnabled() && !config.Theme.DisablePicker {
+		app.userPrefs = newUserPrefsStorage(dbPath)
+		if err := app.userPrefs.init(); err != nil {
+			slog.Error("Could not initialize user preferences, theme choices won't follow people between devices", "path", dbPath, "error", err)
+			app.userPrefs = nil
 		}
+	}
+
+	if len(app.todoListIDToPage) > 0 {
 		app.todoStorage = newTodoStorage(dbPath)
 
 		if err := app.todoStorage.init(); err != nil {
@@ -579,6 +608,9 @@ func (a *application) BackgroundFor(p *page) string {
 
 type templateRequestData struct {
 	Theme *themeProperties
+	// ThemeFromProfile is set when the theme came from the signed-in person's
+	// saved choice or household default, so the browser must not override it.
+	ThemeFromProfile bool
 }
 
 type templateData struct {
@@ -590,20 +622,28 @@ type templateData struct {
 	OIDCError       string
 }
 
-func (a *application) populateTemplateRequestData(data *templateRequestData, r *http.Request) {
-	theme := &a.Config.Theme.themeProperties
-
-	if !a.Config.Theme.DisablePicker {
-		selectedTheme, err := r.Cookie("theme")
-		if err == nil {
-			preset, exists := a.Config.Theme.Presets.Get(selectedTheme.Value)
-			if exists {
-				theme = preset
-			}
-		}
+func (a *application) populateTemplateRequestData(data *templateRequestData, r *http.Request, user *authenticatedUser) {
+	data.Theme = &a.Config.Theme.themeProperties
+	if seasonal := a.seasonalThemeAt(timeNow()); seasonal != nil {
+		data.Theme = seasonal
 	}
 
-	data.Theme = theme
+	if a.Config.Theme.DisablePicker {
+		return
+	}
+
+	if theme, ok := a.profileTheme(user); ok {
+		data.Theme = theme
+		data.ThemeFromProfile = true
+		return
+	}
+
+	// Picking "default" in the picker is a choice too, and overrides the season.
+	if selectedTheme, err := r.Cookie("theme"); err == nil {
+		if preset, exists := a.themeByKey(selectedTheme.Value); exists {
+			data.Theme = preset
+		}
+	}
 }
 
 func (a *application) getAccessiblePages(user *authenticatedUser) []*page {
@@ -635,13 +675,17 @@ func (a *application) handlePageRequest(w http.ResponseWriter, r *http.Request) 
 	}
 
 	user := a.getAuthenticatedUser(w, r)
+	if a.redirectToHomePage(w, r, user) {
+		return
+	}
+
 	data := templateData{
 		Page:            page,
 		App:             a,
 		AuthUser:        user,
 		AccessiblePages: a.getAccessiblePages(user),
 	}
-	a.populateTemplateRequestData(&data.Request, r)
+	a.populateTemplateRequestData(&data.Request, r, user)
 
 	var responseBytes bytes.Buffer
 	err := pageTemplate.Execute(&responseBytes, data)
@@ -667,7 +711,9 @@ func (a *application) handlePageContentRequest(w http.ResponseWriter, r *http.Re
 	}
 
 	pageData := templateData{
-		Page: page,
+		Page:     page,
+		App:      a,
+		AuthUser: a.getAuthenticatedUser(w, r),
 	}
 
 	var err error
@@ -788,6 +834,11 @@ func (a *application) handleWidgetContentRequest(w http.ResponseWriter, r *http.
 		return
 	}
 
+	if !a.canUserSeeWidget(a.getAuthenticatedUser(w, r), widgetID) {
+		a.handleNotFound(w, r)
+		return
+	}
+
 	page.mu.Lock()
 	defer page.mu.Unlock()
 
@@ -822,6 +873,11 @@ func (a *application) handleWidgetActionRequest(w http.ResponseWriter, r *http.R
 	}
 
 	if a.handleAccessControl(w, r, page, showUnauthorizedJSON) {
+		return
+	}
+
+	if !a.canUserSeeWidget(a.getAuthenticatedUser(w, r), widgetID) {
+		a.handleNotFound(w, r)
 		return
 	}
 
@@ -1019,6 +1075,10 @@ func (a *application) server() (func() error, func() error) {
 		mux.HandleFunc("GET /api/v1/pages/{page}", a.handleAPIPage)
 		mux.HandleFunc("GET /api/v1/widgets/{apiID}", a.handleAPIWidget)
 		mux.HandleFunc("OPTIONS /api/v1/{path...}", a.handleAPIPreflight)
+	}
+
+	if a.EditorEnabled || recoveryCode() != "" {
+		a.registerSettingsRoutes(mux)
 	}
 
 	if a.EditorEnabled {

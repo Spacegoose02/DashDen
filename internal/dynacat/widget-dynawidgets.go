@@ -19,6 +19,33 @@ import (
 
 const dynawidgetsDefaultRepo = "main"
 
+// dynawidgetsDefaultOwner is whose dynawidgets repository templates come from.
+// A widget's owner option, or DYNAWIDGETS_OWNER, points at a fork instead.
+const dynawidgetsDefaultOwner = "Panonim"
+
+var dynawidgetsOwnerPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9-]{0,38}$`)
+
+// dynawidgetsRepoKey names a branch of a repository. The default owner's
+// branches keep their plain name, so existing caches stay valid; a fork's
+// are "owner~branch".
+func dynawidgetsRepoKey(owner, branch string) string {
+	if owner == "" || strings.EqualFold(owner, dynawidgetsDefaultOwner) {
+		return branch
+	}
+	return owner + "~" + branch
+}
+
+func splitDynawidgetsRepoKey(key string) (owner, branch string) {
+	if o, b, ok := strings.Cut(key, "~"); ok {
+		return o, b
+	}
+	return dynawidgetsDefaultOwner, key
+}
+
+func dynawidgetsOwnerFromEnv() string {
+	return strings.TrimSpace(os.Getenv("DYNAWIDGETS_OWNER"))
+}
+
 // Set on every config load while widgets may be reading it, so it is stored atomically.
 var dynawidgetsAssetsDirPath atomic.Pointer[string]
 
@@ -34,13 +61,15 @@ func setDynawidgetsAssetsDir(dir string) {
 }
 
 var dynawidgetsSlugPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]{0,63}$`)
-var dynawidgetsRepoPattern = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$`)
+var dynawidgetsRepoPattern = regexp.MustCompile(`^([A-Za-z0-9][A-Za-z0-9-]{0,38}~)?[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$`)
+var dynawidgetsBranchPattern = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$`)
 var dynawidgetsTemplateHost = "raw.githubusercontent.com"
 
 type dynawidgetsWidget struct {
 	widgetBase        `yaml:",inline"`
 	Widget            string `yaml:"widget"`
 	Repo              string `yaml:"repo"`
+	Owner             string `yaml:"owner"`
 	*CustomAPIRequest `yaml:",inline"`
 	Subrequests       map[string]*CustomAPIRequest `yaml:"subrequests"`
 	Options           customAPIOptions             `yaml:"options"`
@@ -85,9 +114,17 @@ func (widget *dynawidgetsWidget) initialize() error {
 	if repo == "" {
 		repo = dynawidgetsDefaultRepo
 	}
-	if !dynawidgetsRepoPattern.MatchString(repo) {
+	if !dynawidgetsBranchPattern.MatchString(repo) {
 		return fmt.Errorf("repo %q is invalid", repo)
 	}
+	owner := widget.Owner
+	if owner == "" {
+		owner = dynawidgetsOwnerFromEnv()
+	}
+	if owner != "" && !dynawidgetsOwnerPattern.MatchString(owner) {
+		return fmt.Errorf("owner %q is not a GitHub user or organization name", owner)
+	}
+	repo = dynawidgetsRepoKey(owner, repo)
 	templateContent, title, required, err := dynawidgetsResolveTemplate(slug, repo)
 	if err != nil {
 		return fmt.Errorf("resolving dynawidget template: %w", err)
@@ -371,7 +408,11 @@ func dynawidgetsTemplateURL(slug string, repo string) (templateURL string, title
 		return "", "", fmt.Errorf("invalid slug %q", slug)
 	}
 
-	listURL := fmt.Sprintf("https://%s/Panonim/dynawidgets/refs/heads/%s/database/list-%s.json", dynawidgetsTemplateHost, repo, slug[:1])
+	owner, branch := splitDynawidgetsRepoKey(repo)
+	if !dynawidgetsOwnerPattern.MatchString(owner) || !dynawidgetsBranchPattern.MatchString(branch) {
+		return "", "", fmt.Errorf("invalid repo %q", repo)
+	}
+	listURL := fmt.Sprintf("https://%s/%s/dynawidgets/refs/heads/%s/database/list-%s.json", dynawidgetsTemplateHost, owner, branch, slug[:1])
 
 	slog.Info("Fetching dynawidgets list", "url", listURL)
 
@@ -403,8 +444,12 @@ func dynawidgetsTemplateURL(slug string, repo string) (templateURL string, title
 	}
 
 	templateURL = entry.Template
-	if repo != dynawidgetsDefaultRepo {
-		templateURL = strings.Replace(templateURL, "/refs/heads/"+dynawidgetsDefaultRepo+"/", "/refs/heads/"+repo+"/", 1)
+	if branch != dynawidgetsDefaultRepo {
+		templateURL = strings.Replace(templateURL, "/refs/heads/"+dynawidgetsDefaultRepo+"/", "/refs/heads/"+branch+"/", 1)
+	}
+	if owner != dynawidgetsDefaultOwner {
+		// A fork's list still points at the original repository.
+		templateURL = strings.Replace(templateURL, "/"+dynawidgetsDefaultOwner+"/dynawidgets/", "/"+owner+"/dynawidgets/", 1)
 	}
 
 	return templateURL, entry.Title, nil

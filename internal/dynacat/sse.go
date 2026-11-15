@@ -360,12 +360,12 @@ func (a *application) sseUpdateLoop(ctx context.Context) {
 	}
 }
 
-func (a *application) sseBroadcastWidgetUpdate(pg *page, msg string) {
+func (a *application) sseBroadcastWidgetUpdate(pg *page, widgetID uint64, msg string) {
 	a.sseMu.RLock()
 	defer a.sseMu.RUnlock()
 
 	for c := range a.sseClients {
-		if !a.canUserAccessPage(c.user, pg) {
+		if !a.canUserAccessPage(c.user, pg) || !a.canUserSeeWidget(c.user, widgetID) {
 			continue
 		}
 
@@ -425,7 +425,7 @@ func (a *application) sseCheckAndPushUpdates(ctx context.Context) {
 				return
 			}
 
-			a.sseBroadcastWidgetUpdate(pg, string(msg))
+			a.sseBroadcastWidgetUpdate(pg, w.GetID(), string(msg))
 		}(w, pg)
 	}
 	wg.Wait()

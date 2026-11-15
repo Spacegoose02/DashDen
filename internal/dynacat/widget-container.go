@@ -11,6 +11,9 @@ type containerWidgetBase struct {
 }
 
 func (widget *containerWidgetBase) _initializeWidgets() error {
+	if err := checkNestedWidgetAccess(widget.Widgets, "group or split column"); err != nil {
+		return err
+	}
 	for i := range widget.Widgets {
 		if err := widget.Widgets[i].initialize(); err != nil {
 			return formatWidgetInitError(err, widget.Widgets[i])

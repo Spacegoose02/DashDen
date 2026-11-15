@@ -76,6 +76,7 @@ type config struct {
 
 		DisablePicker bool                                     `yaml:"disable-picker"`
 		Presets       orderedYAMLMap[string, *themeProperties] `yaml:"presets"`
+		Seasonal      []seasonalTheme                          `yaml:"seasonal"`
 	} `yaml:"theme"`
 
 	Branding struct {
@@ -92,6 +93,10 @@ type config struct {
 		ShowDesktopNavigationOnHover bool          `yaml:"show-desktop-navigation-on-hover"`
 		CenterDesktopNavigation      bool          `yaml:"center-desktop-navigation"`
 	} `yaml:"branding"`
+
+	Household struct {
+		Members map[string]*householdMember `yaml:"members"`
+	} `yaml:"household"`
 
 	Pages []page `yaml:"pages"`
 }
@@ -607,6 +612,10 @@ func isConfigStateValid(config *config) error {
 		return err
 	}
 
+	if err := validateHousehold(config); err != nil {
+		return err
+	}
+
 	if config.Auth.OIDC != nil {
 		oidc := config.Auth.OIDC
 		if oidc.IssuerURL == "" {
@@ -662,6 +671,10 @@ func isConfigStateValid(config *config) error {
 
 		if (len(page.AllowedUsers) > 0 || len(page.AllowedGroups) > 0) && !hasAnyAuthMethod {
 			return fmt.Errorf("page %d has allowed-users/allowed-groups but no auth method is configured", i+1)
+		}
+
+		if err := checkWidgetAccessNeedsAuth(page, hasAnyAuthMethod, i+1); err != nil {
+			return err
 		}
 
 		if page.Title == "" {

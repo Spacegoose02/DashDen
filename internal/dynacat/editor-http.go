@@ -119,6 +119,14 @@ func (a *application) handleEditorDynawidgetVariables(w http.ResponseWriter, r *
 	if repo == "" {
 		repo = dynawidgetsDefaultRepo
 	}
+	owner := strings.TrimSpace(r.URL.Query().Get("owner"))
+	if owner == "" {
+		owner = dynawidgetsOwnerFromEnv()
+	}
+	if owner != "" && !dynawidgetsOwnerPattern.MatchString(owner) {
+		owner = "~" // fails the repo check below
+	}
+	repo = dynawidgetsRepoKey(owner, repo)
 	if !dynawidgetsSlugPattern.MatchString(slug) || !dynawidgetsRepoPattern.MatchString(repo) {
 		writeJSON(w, http.StatusBadRequest, editorErrorBody{
 			Error:   "invalid widget or repo",

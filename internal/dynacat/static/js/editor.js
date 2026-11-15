@@ -853,11 +853,12 @@ function findConfigVariables(text) {
 }
 
 // Blocks the save instead of letting it fail, since the config cannot load while a value is missing.
-async function confirmDynawidgetVariables({ widget, repo }) {
+async function confirmDynawidgetVariables({ widget, repo, owner }) {
     if (!widget) return true;
 
     const params = new URLSearchParams({ widget });
     if (repo) params.set("repo", repo);
+    if (owner) params.set("owner", owner);
 
     let variables;
     try {
@@ -1627,7 +1628,7 @@ function openStylingModal() {
         const theme = themeValuesFor(key);
 
         const reg = (section, k, ctl) => {
-            controls.push({ section, key: k, read: ctl.read });
+            controls.push({ section, key: k, read: ctl.read, input: ctl.input });
             return ctl.wrapper;
         };
 
@@ -1652,7 +1653,55 @@ function openStylingModal() {
         options.append(reg("theme", "text-saturation-multiplier", numField("Text saturation multiplier", theme["text-saturation-multiplier"], "e.g. 1")));
 
         bodyEl.append(sectionTitle("Colors"), colors, sectionTitle("Theme options"), options);
+        previewTheme();
     }
+
+    // Theme studio: show the colors on the page while they're being edited,
+    // and put the page back when the dialog closes.
+    const root = document.documentElement;
+    const previewProps = ["--bgh", "--bgs", "--bgl", "--color-primary", "--color-positive", "--color-negative", "--cm", "--tsm"];
+    const originalScheme = root.getAttribute("data-scheme");
+    function previewTheme() {
+        if (page !== "theme") return;
+        const value = (key) => {
+            const c = controls.find((x) => x.section === "theme" && x.key === key);
+            if (!c || !c.input) return "";
+            return c.input.type === "checkbox" ? c.input.checked : c.input.value.trim();
+        };
+        const triple = (key) => {
+            const v = value(key);
+            const hsl = v ? normalizeHsl(v) : "";
+            const parts = hsl.split(/\s+/).map(Number);
+            return parts.length === 3 && parts.every((n) => !Number.isNaN(n)) ? parts : null;
+        };
+        const set = (prop, v) => (v === null || v === "" ? root.style.removeProperty(prop) : root.style.setProperty(prop, v));
+
+        const bg = triple("background-color");
+        set("--bgh", bg ? String(bg[0]) : null);
+        set("--bgs", bg ? bg[1] + "%" : null);
+        set("--bgl", bg ? bg[2] + "%" : null);
+        for (const name of ["primary", "positive", "negative"]) {
+            const t = triple(name + "-color");
+            set("--color-" + name, t ? `hsl(${t[0]}, ${t[1]}%, ${t[2]}%)` : null);
+        }
+        set("--cm", value("contrast-multiplier") || null);
+        set("--tsm", value("text-saturation-multiplier") || null);
+        root.setAttribute("data-scheme", value("light") ? "light" : "dark");
+    }
+    function endPreview() {
+        for (const prop of previewProps) root.style.removeProperty(prop);
+        if (originalScheme === null) root.removeAttribute("data-scheme");
+        else root.setAttribute("data-scheme", originalScheme);
+    }
+    bodyEl.addEventListener("input", previewTheme);
+    bodyEl.addEventListener("change", previewTheme);
+    const closeWatcher = new MutationObserver(() => {
+        if (!overlay.isConnected) {
+            endPreview();
+            closeWatcher.disconnect();
+        }
+    });
+    queueMicrotask(() => closeWatcher.observe(document.body, { childList: true }));
 
     function renderBrandingBody() {
         bodyEl.innerHTML = "";

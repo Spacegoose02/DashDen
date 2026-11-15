@@ -8,12 +8,14 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
 	"syscall"
+	"unicode/utf8"
 
 	"gopkg.in/yaml.v3"
 )
@@ -996,8 +998,16 @@ func (a *application) writeConfigCandidates(candidates map[string][]byte) error 
 		originals[path] = original
 	}
 
+	snapshotDir, err := snapshotConfigFiles(a.configPath, originals, created)
+	if err != nil {
+		slog.Warn("Could not save config history before writing", "error", err)
+	}
+
 	var written []string
 	rollback := func() {
+		if snapshotDir != "" {
+			os.RemoveAll(snapshotDir)
+		}
 		for _, path := range written {
 			if created[path] {
 				os.Remove(path)
@@ -1639,7 +1649,77 @@ func marshalDocument(doc *yaml.Node) ([]byte, error) {
 	if err := enc.Close(); err != nil {
 		return nil, err
 	}
-	return buf.Bytes(), nil
+	return unescapeEmoji(buf.Bytes()), nil
+}
+
+// yaml.v3 writes characters outside the Basic Multilingual Plane, such as most
+// emoji, as "\U0001F99D" escapes. They're valid YAML as they are, so put
+// them back, but keep the escaped form if that would change what the file
+// means.
+func unescapeEmoji(out []byte) []byte {
+	if !bytes.Contains(out, []byte(`\U`)) {
+		return out
+	}
+
+	// Only double-quoted scalars have escapes, so follow the quoting.
+	var b bytes.Buffer
+	const (
+		plain = iota
+		single
+		double
+	)
+	state := plain
+	var prev byte = '\n' // last non-space byte outside quotes
+	for i := 0; i < len(out); i++ {
+		c := out[i]
+		switch state {
+		case double:
+			if c == '\\' && i+9 < len(out) && out[i+1] == 'U' {
+				if r, err := strconv.ParseUint(string(out[i+2:i+10]), 16, 32); err == nil && utf8.ValidRune(rune(r)) {
+					b.WriteRune(rune(r))
+					i += 9
+					continue
+				}
+			}
+			if c == '\\' && i+1 < len(out) {
+				b.WriteByte(c)
+				b.WriteByte(out[i+1])
+				i++
+				continue
+			}
+			if c == '"' {
+				state = plain
+				prev = c
+			}
+		case single:
+			if c == '\'' {
+				if i+1 < len(out) && out[i+1] == '\'' {
+					b.WriteString("''")
+					i++
+					continue
+				}
+				state = plain
+				prev = c
+			}
+		default:
+			startsScalar := strings.IndexByte("\n:-[{,?", prev) >= 0
+			if c == '"' && startsScalar {
+				state = double
+			} else if c == '\'' && startsScalar {
+				state = single
+			}
+			if c != ' ' && c != '\t' {
+				prev = c
+			}
+		}
+		b.WriteByte(c)
+	}
+
+	var before, after any
+	if yaml.Unmarshal(out, &before) != nil || yaml.Unmarshal(b.Bytes(), &after) != nil || !reflect.DeepEqual(before, after) {
+		return out
+	}
+	return b.Bytes()
 }
 
 func nodeToText(n *yaml.Node) string {

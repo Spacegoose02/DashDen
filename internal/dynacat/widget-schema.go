@@ -71,6 +71,8 @@ var widgetTypeCatalog = []widgetTypeMeta{
 	{"dynawidgets", "Dynawidgets", "mdi:widgets-outline", "configuration/dynawidgets"},
 	{"docker-containers", "Docker Containers", "mdi:docker", "configuration/docker-containers"},
 	{"docker-controller", "Docker Controller", "mdi:docker", "configuration/docker-controller"},
+	{"den-app", "Den App", "mdi:home-heart", ""},
+	{"den-now", "Now in the Den", "mdi:television-play", ""},
 	{"server-stats", "Server Stats", "mdi:server", "configuration/server-stats"},
 	{"speedtest", "Speedtest", "mdi:speedometer", "configuration/speedtest"},
 	{"to-do", "To-do", "mdi:checkbox-marked-outline", "configuration/todo"},
@@ -93,7 +95,13 @@ type fieldAnnotation struct {
 var alwaysAdvancedFields = map[string]bool{
 	"title": true, "title-icon": true, "title-url": true, "hide-header": true,
 	"css-class": true, "cache": true, "update-interval": true, "lazy-load": true,
-	"frameless": true, "api-id": true,
+	"frameless": true, "api-id": true, "allowed-users": true, "allowed-groups": true,
+}
+
+// Hints for fields every widget has.
+var commonFieldHints = map[string]string{
+	"allowed-users":  "Only these people see the widget. Leave empty for everyone who can see the page.",
+	"allowed-groups": "Only these groups see it, e.g. adult or kid. Not available on widgets inside a group; set it on the group.",
 }
 
 // Fields the user must fill in for the widget to work. Fields of a list entry are addressed
@@ -103,6 +111,8 @@ var requiredFields = map[string][]string{
 	"calendar":        {"hosts.url", "hosts.token"},
 	"clock":           {"timezones.timezone"},
 	"custom-api":      {"template"},
+	"den-app":         {"app", "url", "token"},
+	"den-now":         {"sources", "sources.app", "sources.url", "sources.token"},
 	"dns-stats":       {"url"},
 	"dynawidgets":     {"widget"},
 	"extension":       {"url"},
@@ -255,6 +265,7 @@ var fieldAnnotations = map[string]map[string]fieldAnnotation{
 		"headers":        {Advanced: true},
 		"allow-insecure": {Advanced: true},
 		"widget":         {Hint: "Widget from the dynawidgets repository."},
+		"owner":          {Advanced: true, Hint: "GitHub owner of a dynawidgets fork to use instead of Panonim's. DYNAWIDGETS_OWNER sets it for every widget."},
 	},
 	"docker-containers": {
 		"sock-path":    {Advanced: true, Hint: "Defaults to /var/run/docker.sock; can also be a tcp://host:port or http://host:port address."},
@@ -263,6 +274,21 @@ var fieldAnnotations = map[string]map[string]fieldAnnotation{
 	"docker-controller": {
 		"show":      {Options: []string{"both", "containers", "images"}},
 		"sock-path": {Advanced: true, Hint: "Defaults to /var/run/docker.sock; can also be a tcp://host:port or http://host:port address."},
+	},
+	"den-app": {
+		"app":            {Options: []string{"den-duty", "nighttime-ninja", "wavelength"}},
+		"token":          {Hint: "Use ${NAME} and set the value under Settings, Secrets. Den Duty needs a read-and-control token for the buttons."},
+		"home-id":        {Hint: "Den Duty and Nighttime Ninja only."},
+		"kid":            {Hint: "Den Duty only: show just this kid's chores."},
+		"action-groups":  {Hint: "Who may press the buttons. Leave empty for everyone who can see the page."},
+		"approve-groups": {Hint: "Den Duty only: who may approve chores, e.g. adult."},
+		"allow-insecure": {Advanced: true},
+		"collapse-after": {Advanced: true},
+	},
+	"den-now": {
+		"sources.app":            {Options: []string{"bingebandit", "lootden", "wavelength"}},
+		"sources.token":          {Hint: "Use ${NAME} and set the value under Settings, Secrets."},
+		"sources.allow-insecure": {Advanced: true},
 	},
 	"to-do": {
 		"storage": {Options: []string{"local", "server"}},
@@ -345,6 +371,9 @@ func applyFieldHints(fields []widgetFieldSchema, prefix string, ann map[string]f
 	for i := range fields {
 		path := prefix + fields[i].Name
 		fields[i].Hint = ann[path].Hint
+		if fields[i].Hint == "" && prefix == "" {
+			fields[i].Hint = commonFieldHints[path]
+		}
 		applyFieldHints(fields[i].Item, path+".", ann)
 	}
 }

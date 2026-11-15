@@ -227,6 +227,16 @@ func (a *application) apiCanReadPage(user *authenticatedUser, p *page) bool {
 	return user != nil && a.isUserAllowedOnPage(user, p)
 }
 
+// apiCanReadWidget applies a widget's allowed-users/allowed-groups the same
+// way page permissions are applied to the API.
+func (a *application) apiCanReadWidget(user *authenticatedUser, w widget) bool {
+	rules, ok := a.widgetAccessByID[w.GetID()]
+	if !ok || !a.apiEnforcesPagePermissions() {
+		return true
+	}
+	return rules.allows(user)
+}
+
 func (a *application) handleAPIPages(w http.ResponseWriter, r *http.Request) {
 	a.apiCORS(w, r)
 
@@ -250,7 +260,7 @@ func (a *application) handleAPIPages(w http.ResponseWriter, r *http.Request) {
 
 		// Widget titles and errors are written by background updates that hold this lock.
 		p.mu.Lock()
-		views = append(views, apiPageView{Slug: p.Slug, Name: p.Title, Widgets: apiPageWidgetViews(p, false)})
+		views = append(views, apiPageView{Slug: p.Slug, Name: p.Title, Widgets: a.apiPageWidgetViews(user, p, false)})
 		p.mu.Unlock()
 	}
 
@@ -287,7 +297,7 @@ func (a *application) handleAPIPage(w http.ResponseWriter, r *http.Request) {
 		defer p.mu.Unlock()
 
 		p.updateOutdatedWidgets()
-		view = apiPageView{Slug: p.Slug, Name: p.Title, Widgets: apiPageWidgetViews(p, true)}
+		view = apiPageView{Slug: p.Slug, Name: p.Title, Widgets: a.apiPageWidgetViews(user, p, true)}
 	}()
 
 	writeJSON(w, http.StatusOK, view)
@@ -317,7 +327,7 @@ func (a *application) handleAPIWidget(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !a.apiCanReadPage(user, p) {
+	if !a.apiCanReadPage(user, p) || !a.apiCanReadWidget(user, widget) {
 		a.writeAPIForbidden(w, user)
 		return
 	}
@@ -351,16 +361,20 @@ func (a *application) writeAPIForbidden(w http.ResponseWriter, user *authenticat
 	writeJSONError(w, http.StatusForbidden, "user is not allowed on this page")
 }
 
-func apiPageWidgetViews(p *page, includeData bool) []apiWidgetView {
+func (a *application) apiPageWidgetViews(user *authenticatedUser, p *page, includeData bool) []apiWidgetView {
 	views := make([]apiWidgetView, 0, len(p.HeadWidgets))
 
 	for _, w := range p.HeadWidgets {
-		views = append(views, newAPIWidgetView(w, includeData))
+		if a.apiCanReadWidget(user, w) {
+			views = append(views, newAPIWidgetView(w, includeData))
+		}
 	}
 
 	for c := range p.Columns {
 		for _, w := range p.Columns[c].Widgets {
-			views = append(views, newAPIWidgetView(w, includeData))
+			if a.apiCanReadWidget(user, w) {
+				views = append(views, newAPIWidgetView(w, includeData))
+			}
 		}
 	}
 

@@ -84,6 +84,10 @@ func newWidget(widgetType string) (widget, error) {
 		w = &dockerContainersWidget{}
 	case "docker-controller":
 		w = &dockerControllerWidget{}
+	case "den-app":
+		w = &denAppWidget{}
+	case "den-now":
+		w = &denNowWidget{}
 	case "server-stats":
 		w = &serverStatsWidget{}
 	case "speedtest":
@@ -157,6 +161,7 @@ type widget interface {
 	setID(uint64)
 	handleRequest(w http.ResponseWriter, r *http.Request)
 	setHideHeader(bool)
+	access() *widgetAccess
 }
 
 type cacheType int
@@ -190,6 +195,7 @@ type widgetBase struct {
 	cacheType           cacheType            `yaml:"-"`
 	nextUpdate          time.Time            `yaml:"-"`
 	updateRetriedTimes  int                  `yaml:"-"`
+	widgetAccess        `yaml:",inline"`
 }
 
 type widgetProviders struct {

@@ -428,6 +428,35 @@ kbd:active {
     gap: 0.8rem;
 }
 
+.settings-link {
+    display: flex;
+    width: 2rem;
+    height: 2rem;
+    color: var(--color-text-subdue);
+    transition: color .2s;
+}
+
+.settings-link:hover, .settings-link:focus {
+    color: var(--color-text-highlight);
+}
+
+.nav-avatar {
+    width: 2.6rem;
+    height: 2.6rem;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.nav-avatar-text {
+    display: grid;
+    place-items: center;
+    background: var(--color-widget-background-highlight);
+    font-size: 1.4rem;
+    line-height: 1;
+    user-select: none;
+}
+
 .logout-button {
     width: 2rem;
     height: 2rem;
