@@ -1,7 +1,7 @@
 # DashDen for the Unraid Compose Manager plugin.
 # Compose Manager: Add New Stack > "dashden" > Edit Stack > Compose File, paste this,
-# then Compose Up. Keep your secrets in /mnt/user/appdata/dashden/config/.env;
-# dynacat.yml references them as ${NAME} and DashDen won't start if one is missing.
+# then Compose Up. Keep your secrets in /mnt/user/appdata/dashden/config/.env:
+# DashDen reads that file itself, and Settings > Secrets saves to it.
 services:
   dashden:
     container_name: dashden
@@ -15,12 +15,9 @@ services:
       - /etc/localtime:/etc/localtime:ro
       # Uncomment for the Docker containers widget
       # - /var/run/docker.sock:/var/run/docker.sock:ro
-    env_file:
-      - /mnt/user/appdata/dashden/config/.env
     environment:
       - PUID=99
       - PGID=100
-      - ENABLE_EDITOR=true
     labels:
       net.unraid.docker.icon: https://raw.githubusercontent.com/Spacegoose02/DashDen/main/docs/dashden-logo.png
       net.unraid.docker.webui: http://[IP]:[PORT:8080]/

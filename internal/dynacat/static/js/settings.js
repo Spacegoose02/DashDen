@@ -696,7 +696,7 @@ async function loadOverview() {
 }
 
 const sourceLabels = {
-    settings: "Saved here",
+    settings: "In config/.env",
     environment: "Container or env file",
     missing: "Missing",
 };

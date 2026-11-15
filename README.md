@@ -74,13 +74,15 @@ Every push to `main` publishes `ghcr.io/spacegoose02/dashden:main`. Your files l
 ```
 /mnt/user/appdata/dashden/
   config/dynacat.yml   # your config, plus any included files
-  config/.env          # secrets the config references as ${NAME}
+  config/.env          # your secrets, referenced in the config as ${NAME}
   assets/              # images, custom CSS, and the database DashDen creates
 ```
 
-**With Compose Manager (recommended).** Install the Compose Manager plugin from Community Apps, add a stack called `dashden`, and paste [`unraid/docker-compose.yml`](unraid/docker-compose.yml) as its compose file. It loads `config/.env`, so every secret is available at once.
+DashDen reads `config/.env` itself at start-up, so you don't enter any variables in Unraid. Secrets you add or change in Settings > Secrets are saved to the same file, and those values win over anything the container was started with. Settings like `ENABLE_EDITOR=true` and `DASHDEN_RECOVERY` can go in `.env` too.
 
-**With a Docker template.** Copy [`unraid/dashden.xml`](unraid/dashden.xml) to `/boot/config/plugins/dockerMan/templates-user/my-DashDen.xml`, then pick DashDen under Docker > Add Container > Template. Unraid templates can't read an `.env` file, so either add each secret as a variable or start DashDen first and add them under Settings > Secrets, which saves them in the config folder.
+**Docker template.** Copy [`unraid/dashden.xml`](unraid/dashden.xml) to `/boot/config/plugins/dockerMan/templates-user/my-DashDen.xml`, then pick DashDen under Docker > Add Container > Template. It only asks for the port and the two folders.
+
+**Compose Manager.** Or add a stack called `dashden` in the Compose Manager plugin and paste [`unraid/docker-compose.yml`](unraid/docker-compose.yml).
 
 Either way, put DashDen behind Tinyauth in your reverse proxy (see [Authentication](docs/docs/authentication.md)), then open Settings to finish setting up people and apps. If the `:main` image is private, make the package public on GitHub or run `docker login ghcr.io` on Unraid first.
 

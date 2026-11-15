@@ -150,4 +150,3 @@ func mustRead(t *testing.T, path string) []byte {
 	}
 	return b
 }
-
