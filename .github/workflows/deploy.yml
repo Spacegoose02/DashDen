@@ -11,6 +11,7 @@ on:
       - '*.*.*'
     branches:
       - 'beta'
+      - 'main'
     paths-ignore:
       - 'docs/**'
 
@@ -57,6 +58,8 @@ jobs:
             echo "APP_VERSION=${GITHUB_REF_NAME}" >> "${GITHUB_ENV}"
           elif [[ "${GITHUB_REF}" == "refs/heads/beta" ]]; then
             echo "APP_VERSION=beta-${GITHUB_SHA::7}" >> "${GITHUB_ENV}"
+          elif [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
+            echo "APP_VERSION=main-${GITHUB_SHA::7}" >> "${GITHUB_ENV}"
           else
             echo "APP_VERSION=dev" >> "${GITHUB_ENV}"
           fi

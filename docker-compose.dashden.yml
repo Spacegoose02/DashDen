@@ -1,0 +1,21 @@
+# DashDen example. Run it from the folder that holds your config/ and assets/
+# (for example the DashDen-config checkout). Secrets live in config/.env, which
+# the YAML references as ${NAME}; Dynacat refuses to start if one is missing.
+services:
+  dashden:
+    container_name: dashden
+    # :main follows the main branch; use a release tag such as :3.0.2 to pin a version
+    image: ghcr.io/spacegoose02/dashden:main
+    restart: unless-stopped
+    volumes:
+      - ./config:/app/config
+      - ./assets:/app/assets
+      - /etc/localtime:/etc/localtime:ro
+      # Uncomment for the docker containers widget
+      # - /var/run/docker.sock:/var/run/docker.sock:ro
+    # environment:
+    #   - PUID=99
+    #   - PGID=100
+    ports:
+      - 8080:8080
+    env_file: ./config/.env
