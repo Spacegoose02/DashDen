@@ -67,6 +67,23 @@ Easily create your own theme by tweaking a few numbers or choose from one of the
 
 <br>
 
+## Running DashDen on Unraid
+
+Every push to `main` publishes `ghcr.io/spacegoose02/dashden:main`. Your files live in `/mnt/user/appdata/dashden/`:
+
+```
+/mnt/user/appdata/dashden/
+  config/dynacat.yml   # your config, plus any included files
+  config/.env          # secrets the config references as ${NAME}
+  assets/              # images, custom CSS, and the database DashDen creates
+```
+
+**With Compose Manager (recommended).** Install the Compose Manager plugin from Community Apps, add a stack called `dashden`, and paste [`unraid/docker-compose.yml`](unraid/docker-compose.yml) as its compose file. It loads `config/.env`, so every secret is available at once.
+
+**With a Docker template.** Copy [`unraid/dashden.xml`](unraid/dashden.xml) to `/boot/config/plugins/dockerMan/templates-user/my-DashDen.xml`, then pick DashDen under Docker > Add Container > Template. Unraid templates can't read an `.env` file, so either add each secret as a variable or start DashDen first and add them under Settings > Secrets, which saves them in the config folder.
+
+Either way, put DashDen behind Tinyauth in your reverse proxy (see [Authentication](docs/docs/authentication.md)), then open Settings to finish setting up people and apps. If the `:main` image is private, make the package public on GitHub or run `docker login ghcr.io` on Unraid first.
+
 ## Installation
 There are currently two ways to use Dynacat: the UI editor and editing YAML files manually.
 If you'd like to use the UI, here's the recommended configuration. 

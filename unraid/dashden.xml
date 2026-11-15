@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<!-- Unraid template for DashDen. Save as
+     /boot/config/plugins/dockerMan/templates-user/my-DashDen.xml, then
+     Docker > Add Container > Template: DashDen. -->
+<Container version="2">
+  <Name>DashDen</Name>
+  <Repository>ghcr.io/spacegoose02/dashden:main</Repository>
+  <Registry>https://github.com/Spacegoose02/DashDen/pkgs/container/dashden</Registry>
+  <Network>bridge</Network>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/Spacegoose02/DashDen/issues</Support>
+  <Project>https://github.com/Spacegoose02/DashDen</Project>
+  <Overview>The family dashboard: profiles, Tinyauth sign-in, a Settings screen, den app widgets, a notice board and kiosk mode. Put dynacat.yml in the config folder before the first start. Secrets can be added later in Settings, which saves them in the config folder.</Overview>
+  <Category>Productivity: Tools:</Category>
+  <WebUI>http://[IP]:[PORT:8080]/</WebUI>
+  <Icon>https://raw.githubusercontent.com/Spacegoose02/DashDen/main/docs/dashden-logo.png</Icon>
+  <ExtraParams>--restart unless-stopped</ExtraParams>
+  <Config Name="Web UI port" Target="8080" Default="8080" Mode="tcp" Description="Port DashDen listens on. Point your reverse proxy (with Tinyauth in front) here." Type="Port" Display="always" Required="true" Mask="false">8080</Config>
+  <Config Name="Config" Target="/app/config" Default="/mnt/user/appdata/dashden/config" Mode="rw" Description="Holds dynacat.yml, any included files, and the secrets and history saved from Settings." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/dashden/config</Config>
+  <Config Name="Assets" Target="/app/assets" Default="/mnt/user/appdata/dashden/assets" Mode="rw" Description="Images, custom CSS and the SQLite database (to-do lists, notice board, profiles)." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/dashden/assets</Config>
+  <Config Name="Docker socket" Target="/var/run/docker.sock" Default="" Mode="ro" Description="Optional. Set to /var/run/docker.sock to use the Docker containers widget." Type="Path" Display="advanced" Required="false" Mask="false"></Config>
+  <Config Name="PUID" Target="PUID" Default="99" Mode="" Description="User the app runs as. 99 is Unraid's nobody." Type="Variable" Display="advanced" Required="false" Mask="false">99</Config>
+  <Config Name="PGID" Target="PGID" Default="100" Mode="" Description="Group the app runs as. 100 is Unraid's users." Type="Variable" Display="advanced" Required="false" Mask="false">100</Config>
+  <Config Name="Local time" Target="/etc/localtime" Default="/etc/localtime" Mode="ro" Description="Uses the server's time zone for clocks, calendars and seasonal themes." Type="Path" Display="advanced" Required="true" Mask="false">/etc/localtime</Config>
+  <Config Name="Enable editor and Settings" Target="ENABLE_EDITOR" Default="true" Mode="" Description="true turns on the page editor and the Settings screen." Type="Variable" Display="always" Required="false" Mask="false">true</Config>
+  <Config Name="Recovery code" Target="DASHDEN_RECOVERY" Default="" Mode="" Description="Optional, 16+ characters. Lets you into Settings at /settings/recover if you lock yourself out." Type="Variable" Display="advanced" Required="false" Mask="true"></Config>
+</Container>
