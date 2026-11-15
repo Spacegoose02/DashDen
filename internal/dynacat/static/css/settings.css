@@ -149,6 +149,16 @@
     justify-content: flex-end;
 }
 
+.settings-table td.settings-actions {
+    display: table-cell;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.settings-table td.settings-actions > * + * {
+    margin-left: 0.6rem;
+}
+
 .settings-mono {
     font-family: 'JetBrains Mono', monospace;
     font-size: 0.9em;
@@ -201,4 +211,90 @@
     .settings-actions {
         justify-content: flex-start;
     }
+
+    .settings-table td.settings-actions {
+        display: block;
+        text-align: left;
+    }
+}
+
+.settings-recovery {
+    margin-top: 1rem;
+    padding: 1rem 1.4rem;
+    border: 1px solid var(--color-negative);
+    border-radius: var(--border-radius);
+    color: var(--color-text-highlight);
+}
+
+.settings-gap-top {
+    margin-top: 1.5rem;
+}
+
+.settings-card {
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--color-separator);
+}
+
+.settings-card-title {
+    font-size: var(--font-size-h3);
+    margin-bottom: 1.5rem;
+}
+
+.settings-fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(22rem, 1fr));
+    gap: 1.2rem 1.6rem;
+}
+
+.settings-fields label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    color: var(--color-text-subdue);
+}
+
+.settings-fields .settings-input {
+    flex: none;
+    width: 100%;
+}
+
+.settings-wide {
+    grid-column: 1 / -1;
+}
+
+.settings-check {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    color: var(--color-text-highlight);
+    cursor: pointer;
+}
+
+.settings-check input {
+    width: 1.6rem;
+    height: 1.6rem;
+    accent-color: var(--color-primary);
+}
+
+.settings-avatar {
+    width: 3.2rem;
+    height: 3.2rem;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-widget-background-highlight);
+    overflow: hidden;
+    font-size: 1.6rem;
+}
+
+.settings-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+select.settings-input {
+    appearance: auto;
 }

@@ -1,0 +1,21 @@
+{{- template "document.html" . }}
+
+{{- define "document-title" }}Recovery{{ end }}
+
+{{- define "document-head-after" }}
+<link rel="stylesheet" href='{{ .App.StaticAssetPath "css/settings.css" }}'>
+{{- end }}
+
+{{- define "document-body" }}
+<div class="settings-shell content-bounds">
+    <header class="settings-header">
+        <h1 class="settings-title color-highlight">Recovery</h1>
+        <p class="color-subdue">Type the code set in DASHDEN_RECOVERY on the server. This browser can then use Settings for an hour without signing in.</p>
+    </header>
+    <form class="settings-form widget-content-frame settings-panel" method="post">
+        <input class="settings-input" name="code" type="password" required autocomplete="off" aria-label="Recovery code" placeholder="Recovery code" autofocus>
+        <button class="settings-button" type="submit">Open Settings</button>
+    </form>
+    {{- if .Failed }}<p class="color-negative">That code didn't match.</p>{{ end }}
+</div>
+{{- end }}
