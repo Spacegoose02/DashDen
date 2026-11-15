@@ -22,6 +22,7 @@
         <button type="button" role="tab" class="settings-tab" data-tab="signin" aria-selected="false">Sign-in</button>
         <button type="button" role="tab" class="settings-tab" data-tab="access" aria-selected="false">Access</button>
         <button type="button" role="tab" class="settings-tab" data-tab="apps" aria-selected="false">Apps</button>
+        <button type="button" role="tab" class="settings-tab" data-tab="themes" aria-selected="false">Themes</button>
         <button type="button" role="tab" class="settings-tab" data-tab="secrets" aria-selected="false">Secrets</button>
         <button type="button" role="tab" class="settings-tab" data-tab="history" aria-selected="false">History</button>
         <button type="button" role="tab" class="settings-tab" data-tab="server" aria-selected="false">Server</button>
@@ -97,6 +98,28 @@
         <section class="settings-panel widget-content-frame" data-panel="apps" hidden>
             <p class="settings-note">Your household's own apps. Connect one, test it, and add its widget to a page. Addresses and tokens are saved as secrets, so they never end up in the config file.</p>
             <div class="settings-apps" id="apps-list"></div>
+        </section>
+
+        <section class="settings-panel widget-content-frame" data-panel="themes" hidden>
+            <h2 class="settings-card-title color-highlight">Den theme pack</h2>
+            <p class="settings-note">Pick the themes you like and add them. They show up in the theme picker, can be given to people on the People tab, and can be changed with the pencil like any other theme.</p>
+            <p class="settings-note color-negative" id="themes-picker-off" hidden>The theme picker is hidden (Server tab), so people can't choose these themselves. Household and seasonal themes still work.</p>
+            <div class="settings-swatches" id="theme-pack"></div>
+            <div class="settings-actions settings-gap-top">
+                <button type="button" class="settings-button" id="theme-pack-add">Add selected themes</button>
+            </div>
+
+            <h2 class="settings-card-title color-highlight settings-card">Seasonal themes</h2>
+            <p class="settings-note">Change the dashboard's default theme for part of the year. Dates are month-day and can wrap past New Year, like 12-20 to 01-06. Anyone who picked a theme for themselves keeps it.</p>
+            <p class="settings-note" id="season-now"></p>
+            <table class="settings-table" id="season-table">
+                <thead><tr><th>Theme</th><th>From</th><th>To</th><th></th></tr></thead>
+                <tbody></tbody>
+            </table>
+            <div class="settings-actions settings-gap-top">
+                <button type="button" class="settings-button settings-button-small" id="season-add">Add a season</button>
+                <button type="button" class="settings-button" id="season-save">Save seasons</button>
+            </div>
         </section>
 
         <section class="settings-panel widget-content-frame" data-panel="server" hidden>

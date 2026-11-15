@@ -381,3 +381,62 @@ select.settings-input {
 .settings-app-result {
     margin-top: 1rem;
 }
+
+.settings-swatches {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+    gap: 1.2rem;
+}
+
+.settings-swatch {
+    display: block;
+    border: 2px solid transparent;
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    cursor: pointer;
+    background: var(--color-widget-background);
+    outline: 1px solid var(--color-widget-content-border);
+}
+
+.settings-swatch:has(input:checked) {
+    border-color: var(--color-primary);
+}
+
+.settings-swatch input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.settings-swatch-preview {
+    height: 6rem;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.settings-swatch-bar {
+    height: 0.6rem;
+    border-radius: 0.3rem;
+    width: 60%;
+}
+
+.settings-swatch-dots {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.settings-swatch-dots span {
+    width: 1.2rem;
+    height: 1.2rem;
+    border-radius: 50%;
+}
+
+.settings-swatch-text {
+    padding: 0.8rem 1rem 1rem;
+}
+
+.settings-swatch-name {
+    color: var(--color-text-highlight);
+}

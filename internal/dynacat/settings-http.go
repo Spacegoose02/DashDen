@@ -40,6 +40,7 @@ func (a *application) registerSettingsRoutes(mux *http.ServeMux) {
 	}
 	a.registerSettingsPeopleRoutes(mux)
 	a.registerSettingsAppsRoutes(mux)
+	a.registerSettingsThemesRoutes(mux)
 	mux.HandleFunc("GET /api/settings/overview", a.settingsJSON(a.handleSettingsOverview))
 	mux.HandleFunc("GET /api/settings/secrets", a.settingsJSON(a.handleSettingsSecretsList))
 	mux.HandleFunc("PUT /api/settings/secrets/{name}", a.settingsJSON(a.handleSettingsSecretSet))

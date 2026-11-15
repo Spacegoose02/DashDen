@@ -360,6 +360,128 @@ function renderSetup(o) {
     document.getElementById("setup").hidden = steps.every((s) => s.done);
 }
 
+let themesData;
+
+const hsl = (triple) => {
+    const [h, s, l] = String(triple).split(/\s+/);
+    return `hsl(${h} ${s}% ${l}%)`;
+};
+
+function seasonRow(season) {
+    const tr = document.createElement("tr");
+    const preset = document.createElement("select");
+    preset.className = "settings-input";
+    preset.setAttribute("aria-label", "Theme");
+    preset.append(...themesData.presets.map((k) => option(k, k)));
+    preset.value = season.preset || themesData.presets[0] || "";
+    const from = document.createElement("input");
+    from.className = "settings-input";
+    from.placeholder = "12-01";
+    from.value = season.from || "";
+    from.setAttribute("aria-label", "From");
+    const to = document.createElement("input");
+    to.className = "settings-input";
+    to.placeholder = "12-31";
+    to.value = season.to || "";
+    to.setAttribute("aria-label", "To");
+    for (const el of [preset, from, to]) {
+        const td = document.createElement("td");
+        td.append(el);
+        tr.append(td);
+    }
+    const actions = document.createElement("td");
+    actions.className = "settings-actions";
+    actions.append(button("Remove", () => tr.remove(), true));
+    tr.append(actions);
+    tr.read = () => ({ preset: preset.value, from: from.value.trim(), to: to.value.trim() });
+    return tr;
+}
+
+async function loadThemes() {
+    try {
+        themesData = await call("GET", "/themes");
+        document.getElementById("themes-picker-off").hidden = !themesData.pickerDisabled;
+        const grid = document.getElementById("theme-pack");
+        grid.replaceChildren();
+        for (const t of themesData.pack) {
+            const label = document.createElement("label");
+            label.className = "settings-swatch";
+            const check = document.createElement("input");
+            check.type = "checkbox";
+            check.value = t.key;
+            check.disabled = t.installed;
+            const preview = document.createElement("div");
+            preview.className = "settings-swatch-preview";
+            preview.style.background = hsl(t.background);
+            const bar = document.createElement("div");
+            bar.className = "settings-swatch-bar";
+            bar.style.background = hsl(t.primary);
+            const dots = document.createElement("div");
+            dots.className = "settings-swatch-dots";
+            for (const c of [t.primary, t.positive, t.negative]) {
+                const dot = document.createElement("span");
+                dot.style.background = hsl(c);
+                dots.append(dot);
+            }
+            preview.append(bar, dots);
+            const text = document.createElement("div");
+            text.className = "settings-swatch-text";
+            const name = document.createElement("div");
+            name.className = "settings-swatch-name";
+            name.textContent = t.name + (t.installed ? " ✓" : "");
+            const desc = document.createElement("div");
+            desc.className = "size-h6 color-subdue";
+            desc.textContent = t.installed ? "Added" : t.description + (t.season ? ` Made for ${t.season}.` : "");
+            text.append(name, desc);
+            label.append(check, preview, text);
+            grid.append(label);
+        }
+
+        const tbody = document.querySelector("#season-table tbody");
+        tbody.replaceChildren(...themesData.seasonal.map(seasonRow));
+        document.getElementById("season-now").textContent = themesData.currentSeason
+            ? `Right now the default theme is ${themesData.currentSeason}.`
+            : "No seasonal theme is active today.";
+    } catch (e) {
+        notify("Could not load themes: " + e.message, true);
+    }
+}
+
+document.getElementById("theme-pack-add").addEventListener("click", async () => {
+    const keys = [...document.querySelectorAll("#theme-pack input:checked:not(:disabled)")].map((c) => c.value);
+    if (!keys.length) {
+        notify("Pick at least one theme first.", true);
+        return;
+    }
+    try {
+        const r = await call("POST", "/themes/pack", { keys });
+        notify(`Added ${r.added.length} themes, reloading…`);
+        await waitForConfigReload();
+        loadThemes();
+    } catch (e) {
+        notify(e.message, true);
+    }
+});
+
+document.getElementById("season-add").addEventListener("click", () => {
+    const suggestion = themesData.pack.find((t) => t.season && t.installed);
+    document.querySelector("#season-table tbody").append(seasonRow(suggestion
+        ? { preset: suggestion.key, from: suggestion.seasonFrom, to: suggestion.seasonTo }
+        : {}));
+});
+
+document.getElementById("season-save").addEventListener("click", async () => {
+    const seasonal = [...document.querySelectorAll("#season-table tbody tr")].map((tr) => tr.read());
+    try {
+        await call("PUT", "/themes/seasonal", { seasonal });
+        notify("Saved seasons, reloading…");
+        await waitForConfigReload();
+        loadThemes();
+    } catch (e) {
+        notify(e.message, true);
+    }
+});
+
 let appsPages = [];
 
 function appForm(app) {
@@ -672,7 +794,7 @@ async function loadHistory() {
     }
 }
 
-const loaders = { overview: loadOverview, people: loadPeople, signin: loadSignIn, access: loadAccess, apps: loadApps, secrets: loadSecrets, history: loadHistory, server: loadServer };
+const loaders = { overview: loadOverview, people: loadPeople, signin: loadSignIn, access: loadAccess, apps: loadApps, themes: loadThemes, secrets: loadSecrets, history: loadHistory, server: loadServer };
 
 function showTab(name) {
     for (const tab of document.querySelectorAll(".settings-tab")) {
