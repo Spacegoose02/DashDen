@@ -38,8 +38,19 @@ var loginPageTemplate = mustParseTemplate("login.html", "document.html", "footer
 
 type authenticatedUser struct {
 	Username string
+	Name     string
+	Email    string
 	Groups   []string
 	IsOIDC   bool
+	IsProxy  bool
+}
+
+// DisplayName is the person's full name when the sign-in method sent one.
+func (u *authenticatedUser) DisplayName() string {
+	if u.Name != "" {
+		return u.Name
+	}
+	return u.Username
 }
 
 type doWhenUnauthorized int
@@ -280,6 +291,10 @@ func (a *application) verifyUserPassword(username, password string) *authenticat
 }
 
 func (a *application) getAuthenticatedUser(w http.ResponseWriter, r *http.Request) *authenticatedUser {
+	if user := a.getProxyAuthenticatedUser(r); user != nil {
+		return user
+	}
+
 	if a.PasswordEnabled && len(a.Config.Auth.Users) > 0 {
 		token, err := r.Cookie(AUTH_SESSION_COOKIE_NAME)
 		if err == nil && token.Value != "" {
@@ -458,7 +473,7 @@ func (a *application) takeLoginRedirect(w http.ResponseWriter, r *http.Request) 
 }
 
 func (a *application) AnyAuthEnabled() bool {
-	return a.OIDCEnabled || a.PasswordEnabled
+	return a.OIDCEnabled || a.PasswordEnabled || a.ProxyAuthEnabled
 }
 
 func (a *application) handleLogoutRequest(w http.ResponseWriter, r *http.Request) {
@@ -475,6 +490,17 @@ func (a *application) handleLogoutRequest(w http.ResponseWriter, r *http.Request
 	}
 
 	a.clearCookie(w, r, OIDC_SESSION_COOKIE_NAME)
+
+	// The proxy owns the session, so signing out has to happen there.
+	if a.Config.Auth.Proxy != nil && a.Config.Auth.Proxy.LogoutURL != "" && a.getProxyAuthenticatedUser(r) != nil {
+		http.Redirect(w, r, a.Config.Auth.Proxy.LogoutURL, http.StatusSeeOther)
+		return
+	}
+
+	if a.proxyOnly() {
+		http.Redirect(w, r, a.Config.Server.BaseURL+"/login?logged-out=1", http.StatusSeeOther)
+		return
+	}
 
 	if !a.Config.Auth.AutoRedirectOIDC || !a.OIDCEnabled {
 		http.Redirect(w, r, a.Config.Server.BaseURL+"/login", http.StatusSeeOther)
@@ -533,6 +559,11 @@ func (a *application) setAuthSessionCookie(w http.ResponseWriter, r *http.Reques
 func (a *application) handleLoginPageRequest(w http.ResponseWriter, r *http.Request) {
 	if a.getAuthenticatedUser(w, r) != nil {
 		http.Redirect(w, r, a.Config.Server.BaseURL+"/", http.StatusSeeOther)
+		return
+	}
+
+	if a.proxyOnly() {
+		a.handleProxyOnlyLogin(w, r)
 		return
 	}
 

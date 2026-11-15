@@ -59,6 +59,7 @@ type application struct {
 	RequiresAuth           bool
 	OIDCEnabled            bool
 	PasswordEnabled        bool
+	ProxyAuthEnabled       bool
 	authSecretKey          []byte
 	usernameHashToUsername map[string]string
 	authAttemptsMu         sync.Mutex
@@ -172,6 +173,12 @@ func newApplication(c *config) (*application, error) {
 		app.oauth2Config = oauth2Cfg
 		app.oidcSessions = sharedOIDCSessions
 		app.OIDCEnabled = true
+	}
+
+	if config.Auth.Proxy != nil {
+		config.Auth.Proxy.applyDefaults()
+		app.ProxyAuthEnabled = true
+		app.RequiresAuth = config.Auth.RequireAuth == nil || *config.Auth.RequireAuth
 	}
 
 	if !config.Theme.DisablePicker {
