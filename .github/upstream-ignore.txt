@@ -1,0 +1,2 @@
+# Upstream Dynacat commits to leave out of DashDen, one SHA per line (7+ chars).
+# The upstream watch workflow skips these.

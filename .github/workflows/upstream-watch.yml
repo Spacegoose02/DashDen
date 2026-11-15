@@ -1,0 +1,93 @@
+name: Upstream watch
+
+# Lists Dynacat changes that DashDen hasn't picked up yet, in a single issue.
+# Nothing is merged automatically: cherry-pick what you want, and list SHAs you
+# want to skip in .github/upstream-ignore.txt.
+
+permissions:
+  contents: read
+  issues: write
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 13 * * 1'
+
+env:
+  UPSTREAM: Panonim/dynacat
+  LABEL: upstream-watch
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Fetch upstream
+        run: |
+          git remote add upstream "https://github.com/${UPSTREAM}.git"
+          git fetch --quiet --tags upstream main
+
+      - name: Build report
+        id: report
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          touch .github/upstream-ignore.txt
+          ignore() { grep -v "^#" .github/upstream-ignore.txt | grep -qi "^${1:0:7}"; }
+
+          # git cherry marks upstream commits whose patch isn't already in HEAD with "+"
+          git cherry HEAD upstream/main | awk '$1 == "+" { print $2 }' > pending.txt
+          commits=""
+          count=0
+          while read -r sha; do
+            ignore "$sha" && continue
+            count=$((count + 1))
+            [ "$count" -gt 100 ] && continue
+            line="$(git log -1 --format='%h %cs %s' "$sha")"
+            commits+="- [ ] [\`${line%% *}\`](https://github.com/${UPSTREAM}/commit/${sha}) ${line#* }"$'\n'
+          done < pending.txt
+
+          releases=""
+          while IFS=$'\t' read -r tag published; do
+            git rev-parse -q --verify "refs/tags/${tag}^{commit}" >/dev/null || continue
+            missing=$(git cherry HEAD "$tag" | grep -c '^+' || true)
+            [ "$missing" -eq 0 ] && continue
+            releases+="- [${tag}](https://github.com/${UPSTREAM}/releases/tag/${tag}) (${published%%T*}), ${missing} commits not in DashDen"$'\n'
+          done < <(gh release list -R "$UPSTREAM" --limit 20 --exclude-drafts --json tagName,publishedAt --jq '.[] | [.tagName, .publishedAt] | @tsv')
+
+          {
+            echo "Dynacat changes that aren't in DashDen yet. Nothing here is merged automatically."
+            echo
+            echo "To take one: \`git fetch upstream && git cherry-pick <sha>\`. To hide one, add its SHA to \`.github/upstream-ignore.txt\`."
+            echo
+            echo "## Releases"
+            echo "${releases:-None}"
+            echo
+            echo "## Commits on upstream main (${count})"
+            echo "${commits:-None}"
+            [ "$count" -gt 100 ] && echo "_Showing the oldest 100._"
+            echo
+            echo "_Updated $(date -u +%Y-%m-%d) by the upstream watch workflow._"
+          } > body.md
+          echo "count=${count}" >> "$GITHUB_OUTPUT"
+
+      - name: Open or update issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COUNT: ${{ steps.report.outputs.count }}
+        run: |
+          gh label create "$LABEL" --color 0E8A16 --description "Pending upstream Dynacat changes" 2>/dev/null || true
+          issue="$(gh issue list --label "$LABEL" --state open --json number --jq '.[0].number')"
+          if [ "$COUNT" -eq 0 ]; then
+            [ -n "$issue" ] && gh issue close "$issue" --comment "DashDen has everything from upstream."
+            exit 0
+          fi
+          if [ -n "$issue" ]; then
+            gh issue edit "$issue" --body-file body.md
+          else
+            gh issue create --title "Upstream Dynacat changes to review" --label "$LABEL" --body-file body.md
+          fi
