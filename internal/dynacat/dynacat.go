@@ -404,6 +404,11 @@ func newApplication(c *config) (*application, error) {
 		}
 	}
 
+	if err := app.checkHouseholdHomePages(); err != nil {
+		return nil, err
+	}
+	app.prepareHousehold()
+
 	app.warnAboutAPIExposure()
 	app.setupEditorLoginRequirement()
 	app.warnAboutEditorExposure()
@@ -635,6 +640,10 @@ func (a *application) handlePageRequest(w http.ResponseWriter, r *http.Request) 
 	}
 
 	user := a.getAuthenticatedUser(w, r)
+	if a.redirectToHomePage(w, r, user) {
+		return
+	}
+
 	data := templateData{
 		Page:            page,
 		App:             a,

@@ -263,6 +263,8 @@ That is all Tinyauth needs, because the header names default to Tinyauth's. Ever
 
 Tinyauth only sends groups for people who sign in through an OAuth provider that has them, or through LDAP. With Tinyauth's own local users, restrict pages with `allowed-users`.
 
+To give each person a name, avatar, role and home page, see [Household](household.md).
+
 `auth.proxy` works alongside password users and OIDC. When it's the only method, `/login` redirects to `login-url` or answers 401.
 
 ## Per-Page Access Control

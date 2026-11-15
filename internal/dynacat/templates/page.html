@@ -87,7 +87,10 @@
             {{ end }}
             {{- if .AuthUser }}
             <div class="nav-user">
-                <span class="nav-username color-subdue">{{ .AuthUser.DisplayName }}</span>
+                {{- with .AuthUser.Member }}{{ if .Avatar }}
+                {{- if .AvatarIsImage }}<img class="nav-avatar" src="{{ .Avatar }}" alt="" loading="lazy">{{ else }}<span class="nav-avatar nav-avatar-text" aria-hidden="true">{{ .Avatar }}</span>{{ end }}
+                {{- end }}{{ end }}
+                <span class="nav-username color-subdue">{{ if .AuthUser.Member }}Hi, {{ end }}{{ .AuthUser.DisplayName }}</span>
                 <form method="POST" action="{{ .App.Config.Server.BaseURL }}/logout" style="display:contents">
                     <button type="submit" class="block" title="Logout" style="background:none;border:none;padding:0;cursor:pointer">
                         <svg class="logout-button" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">

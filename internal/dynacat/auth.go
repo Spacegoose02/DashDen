@@ -43,6 +43,7 @@ type authenticatedUser struct {
 	Groups   []string
 	IsOIDC   bool
 	IsProxy  bool
+	member   *householdMember
 }
 
 // DisplayName is the person's full name when the sign-in method sent one.
@@ -291,6 +292,10 @@ func (a *application) verifyUserPassword(username, password string) *authenticat
 }
 
 func (a *application) getAuthenticatedUser(w http.ResponseWriter, r *http.Request) *authenticatedUser {
+	return a.withHousehold(a.getSignedInUser(w, r))
+}
+
+func (a *application) getSignedInUser(w http.ResponseWriter, r *http.Request) *authenticatedUser {
 	if user := a.getProxyAuthenticatedUser(r); user != nil {
 		return user
 	}
