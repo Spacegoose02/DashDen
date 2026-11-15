@@ -34,6 +34,11 @@ func (a *application) CanUseSettings(user *authenticatedUser) bool {
 
 func (a *application) registerSettingsRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /settings", a.handleSettingsPage)
+	if recoveryCode() != "" {
+		mux.HandleFunc("GET /settings/recover", a.handleRecoveryPage)
+		mux.HandleFunc("POST /settings/recover", a.handleRecoveryPage)
+	}
+	a.registerSettingsPeopleRoutes(mux)
 	mux.HandleFunc("GET /api/settings/overview", a.settingsJSON(a.handleSettingsOverview))
 	mux.HandleFunc("GET /api/settings/secrets", a.settingsJSON(a.handleSettingsSecretsList))
 	mux.HandleFunc("PUT /api/settings/secrets/{name}", a.settingsJSON(a.handleSettingsSecretSet))
@@ -46,12 +51,18 @@ func (a *application) registerSettingsRoutes(mux *http.ServeMux) {
 // is a same-origin JSON call, which a cross-site form cannot make.
 func (a *application) settingsJSON(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if a.handleUnauthorizedResponse(w, r, showUnauthorizedJSON) {
+		if a.configPath == "" {
+			writeJSONError(w, http.StatusNotFound, "Settings need a config file.")
 			return
 		}
-		if !a.CanUseSettings(a.getAuthenticatedUser(w, r)) {
-			writeJSONError(w, http.StatusForbidden, "Only household admins can change settings.")
-			return
+		if !inRecovery(r) {
+			if a.handleUnauthorizedResponse(w, r, showUnauthorizedJSON) {
+				return
+			}
+			if !a.CanUseSettings(a.getAuthenticatedUser(w, r)) {
+				writeJSONError(w, http.StatusForbidden, "Only household admins can change settings.")
+				return
+			}
 		}
 		if r.Method != http.MethodGet {
 			// A cross-site form can only POST, so DELETE needs no body or JSON type.
@@ -72,17 +83,27 @@ func (a *application) settingsJSON(next http.HandlerFunc) http.HandlerFunc {
 }
 
 func (a *application) handleSettingsPage(w http.ResponseWriter, r *http.Request) {
-	if a.handleUnauthorizedResponse(w, r, redirectToLogin) {
-		return
-	}
-	user := a.getAuthenticatedUser(w, r)
-	if !a.CanUseSettings(user) {
-		w.WriteHeader(http.StatusForbidden)
-		w.Write([]byte("Only household admins can open Settings."))
+	recovery := inRecovery(r)
+	var user *authenticatedUser
+	if !recovery {
+		if a.handleUnauthorizedResponse(w, r, redirectToLogin) {
+			return
+		}
+		user = a.getAuthenticatedUser(w, r)
+		if !a.CanUseSettings(user) {
+			w.WriteHeader(http.StatusForbidden)
+			w.Write([]byte("Only household admins can open Settings."))
+			return
+		}
+	} else if a.configPath == "" {
+		a.handleNotFound(w, r)
 		return
 	}
 
-	data := templateData{App: a, AuthUser: user, AccessiblePages: a.getAccessiblePages(user)}
+	data := settingsPageData{
+		templateData: templateData{App: a, AuthUser: user, AccessiblePages: a.getAccessiblePages(user)},
+		Recovery:     recovery,
+	}
 	a.populateTemplateRequestData(&data.Request, r, user)
 
 	var buf bytes.Buffer
@@ -93,6 +114,11 @@ func (a *application) handleSettingsPage(w http.ResponseWriter, r *http.Request)
 	}
 	w.Header().Set("Cache-Control", "no-store")
 	w.Write(buf.Bytes())
+}
+
+type settingsPageData struct {
+	templateData
+	Recovery bool
 }
 
 type settingsOverview struct {

@@ -413,6 +413,7 @@ func newApplication(c *config) (*application, error) {
 	app.warnAboutAPIExposure()
 	app.setupEditorLoginRequirement()
 	app.warnAboutEditorExposure()
+	warnAboutRecoveryCode()
 
 	config.Theme.CustomCSSFile = app.resolveUserDefinedAssetPath(config.Theme.CustomCSSFile)
 	config.Branding.LogoURL = app.resolveUserDefinedAssetPath(config.Branding.LogoURL)
@@ -1047,8 +1048,11 @@ func (a *application) server() (func() error, func() error) {
 		mux.HandleFunc("OPTIONS /api/v1/{path...}", a.handleAPIPreflight)
 	}
 
-	if a.EditorEnabled {
+	if a.EditorEnabled || recoveryCode() != "" {
 		a.registerSettingsRoutes(mux)
+	}
+
+	if a.EditorEnabled {
 		mux.HandleFunc("GET /api/editor/schema", a.handleEditorSchema)
 		mux.HandleFunc("GET /api/editor/status", a.handleEditorStatus)
 		mux.HandleFunc("GET /api/editor/config", a.handleEditorConfigLoad)

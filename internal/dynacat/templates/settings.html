@@ -13,10 +13,14 @@
         <a class="settings-back color-subdue" href="{{ .App.Config.Server.BaseURL }}/">&larr; Back to the dashboard</a>
         <h1 class="settings-title color-highlight">Settings</h1>
         {{- with .AuthUser }}<p class="color-subdue">Signed in as {{ .DisplayName }}</p>{{ end }}
+        {{- if .Recovery }}<p class="settings-recovery">Recovery mode: you're in with the recovery code, not signed in. Fix what's wrong, then remove DASHDEN_RECOVERY from the server.</p>{{ end }}
     </header>
 
     <nav class="settings-tabs" role="tablist">
         <button type="button" role="tab" class="settings-tab" data-tab="overview" aria-selected="true">Overview</button>
+        <button type="button" role="tab" class="settings-tab" data-tab="people" aria-selected="false">People</button>
+        <button type="button" role="tab" class="settings-tab" data-tab="signin" aria-selected="false">Sign-in</button>
+        <button type="button" role="tab" class="settings-tab" data-tab="access" aria-selected="false">Access</button>
         <button type="button" role="tab" class="settings-tab" data-tab="secrets" aria-selected="false">Secrets</button>
         <button type="button" role="tab" class="settings-tab" data-tab="history" aria-selected="false">History</button>
     </nav>
@@ -25,6 +29,63 @@
         <section class="settings-panel widget-content-frame" data-panel="overview">
             <dl class="settings-facts" id="overview-facts"><dt>Loading…</dt><dd></dd></dl>
             <p class="settings-note color-subdue">Pages, widgets, themes and branding are edited on the dashboard itself with the pencil button. Settings covers everything around them.</p>
+        </section>
+
+        <section class="settings-panel widget-content-frame" data-panel="people" hidden>
+            <p class="settings-note">Everyone in the household. The username is what they sign in with (their Tinyauth or OIDC username, or a local one). Their role decides what they can do: admins can open Settings, and adults, kids and guests can be given different pages.</p>
+            <table class="settings-table" id="people-table">
+                <thead><tr><th></th><th>Person</th><th>Role</th><th>Home page</th><th></th></tr></thead>
+                <tbody></tbody>
+            </table>
+            <p><button type="button" class="settings-button settings-gap-top" id="person-add">Add a person</button></p>
+
+            <form class="settings-card" id="person-form" hidden autocomplete="off">
+                <h2 class="settings-card-title color-highlight" id="person-form-title">Add a person</h2>
+                <div class="settings-fields">
+                    <label>Username<input class="settings-input" name="username" required pattern="[A-Za-z0-9][A-Za-z0-9._@\-]{0,63}"></label>
+                    <label>Name<input class="settings-input" name="name" placeholder="Shown on the dashboard"></label>
+                    <label>Avatar<input class="settings-input" name="avatar" placeholder="An emoji, initials or an image URL"></label>
+                    <label>Role<select class="settings-input" name="role"></select></label>
+                    <label>Home page<select class="settings-input" name="home"></select></label>
+                    <label>Theme<select class="settings-input" name="theme"></select></label>
+                    <label class="settings-wide">Extra groups<input class="settings-input" name="groups" placeholder="Comma separated, e.g. gamers, early-birds"></label>
+                    <label class="settings-wide" id="person-password-field">Password for signing in here<input class="settings-input" name="password" type="password" minlength="8" maxlength="72" autocomplete="new-password" placeholder="Leave empty to keep it as it is"></label>
+                </div>
+                <div class="settings-actions settings-gap-top">
+                    <button type="button" class="settings-button settings-button-small" id="person-cancel">Cancel</button>
+                    <button type="submit" class="settings-button">Save</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="settings-panel widget-content-frame" data-panel="signin" hidden>
+            <p class="settings-note">Sign in with Tinyauth, or another forward-auth proxy such as Authelia or Authentik. The proxy checks who someone is and tells DashDen in request headers. DashDen only believes those headers when the request comes straight from an address you trust.</p>
+            <dl class="settings-facts" id="signin-facts"></dl>
+            <form id="signin-form" autocomplete="off">
+                <label class="settings-check"><input type="checkbox" name="enabled"> Sign in through a forward-auth proxy</label>
+                <div class="settings-fields settings-gap-top">
+                    <label class="settings-wide">Trusted proxies<input class="settings-input" name="trustedProxies" placeholder="Comma separated addresses or ranges, e.g. 172.18.0.0/16"></label>
+                    <label>Sign-in page<input class="settings-input" name="loginURL" type="url" placeholder="https://auth.example.com"></label>
+                    <label>Sign-out page<input class="settings-input" name="logoutURL" type="url" placeholder="https://auth.example.com/logout"></label>
+                    <label>Only these users<input class="settings-input" name="allowedUsers" placeholder="Anyone the proxy lets through"></label>
+                    <label>Only these groups<input class="settings-input" name="allowedGroups" placeholder="Anyone the proxy lets through"></label>
+                    <label>Username header<input class="settings-input" name="userHeader" placeholder="Remote-User"></label>
+                    <label>Groups header<input class="settings-input" name="groupsHeader" placeholder="Remote-Groups"></label>
+                </div>
+                <div class="settings-actions settings-gap-top">
+                    <button type="submit" class="settings-button">Save sign-in</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="settings-panel widget-content-frame" data-panel="access" hidden>
+            <p class="settings-note">Who can see each page. Leave both empty for everyone who can sign in. Groups include each person's role, so <code>adult</code> covers adults and admins.</p>
+            <p class="settings-note color-negative" id="access-noauth" hidden>Sign-in isn't set up, so every page is visible to anyone who can reach DashDen.</p>
+            <table class="settings-table" id="access-table">
+                <thead><tr><th>Page</th><th>Users</th><th>Groups</th><th></th></tr></thead>
+                <tbody></tbody>
+            </table>
+            <p class="settings-note color-subdue settings-gap-top" id="access-known"></p>
         </section>
 
         <section class="settings-panel widget-content-frame" data-panel="secrets" hidden>
