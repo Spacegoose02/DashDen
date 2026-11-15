@@ -1,5 +1,32 @@
 # Themes
 
+## Den theme pack
+
+Settings, Themes has eleven ready-made themes: Den Night, Campfire, Forest, Ocean, Candy, Paper, Sunny, High Contrast, and three seasonal ones (Spooky, Winter Holidays, Spring). Tick the ones you want and press **Add selected themes**. They're copied into `theme.presets`, so they appear in the theme picker, can be set as someone's theme on the People tab, and can be edited like any other preset.
+
+## Live preview
+
+In edit mode, clicking the theme picker opens the styling dialog. While you change colors or options there, the dashboard behind it changes with them, so you can see the result before saving. Cancel, or click outside the dialog, and the page goes back to how it was.
+
+## Seasonal themes
+
+Swap the default theme for part of the year:
+
+```yaml
+theme:
+  seasonal:
+    - preset: spooky
+      from: "10-15"
+      to: "10-31"
+    - preset: winter-holidays
+      from: "12-20"
+      to: "01-06"   # ranges can wrap past New Year
+```
+
+Dates are month-day in the server's time zone (set `TZ` on the container), and the first matching entry wins. A theme someone picked for themselves, or one set for them on the People tab, still wins over the season, and so does choosing the default theme in the picker. Seasons can also be set up under Settings, Themes.
+
+The themes below are community themes you can copy into `theme.presets`.
+
 ## Dark
 
 ### Teal City

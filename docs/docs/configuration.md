@@ -1418,6 +1418,7 @@ Examples:
 | ---- | ---- | -------- | ------- |
 | widget | string | yes | |
 | repo | string | no | main |
+| owner | string | no | Panonim |
 | url | string | no | |
 | headers | key (string) & value (string) | no | |
 | method | string | no | GET |
@@ -1447,6 +1448,16 @@ widget: daily-chess-puzzle
 repo: testing/main
 ```
 
+
+
+##### `owner`
+The GitHub owner of the dynawidgets repository to use, for a fork with your own widgets. Defaults to `Panonim`, or to the `DYNAWIDGETS_OWNER` environment variable when it's set. Example:
+
+```yaml
+- type: dynawidgets
+  widget: den-weather
+  owner: Spacegoose02
+```
 
 ##### `url`, `headers`, `method`, `body-type`, `body`, `frameless`, `allow-insecure`, `skip-json-validation`
 These properties work the same as in the [custom-api widget](#custom-api). They override the default values defined in the widget's template `required` section.
@@ -1825,6 +1836,89 @@ How often the widget polls for updates. The value is a string and must be a numb
 **Image Actions:**
 - **Pull**: Enter an image name (e.g., `nginx:latest`, `ghcr.io/user/repo:tag`) in the input field and click the download button
 - **Remove**: Click the remove button on an image to delete it (two-click confirmation)
+
+### Den App
+
+Shows one of the household's own apps with buttons that act on it, so nobody has to open the app for small things.
+
+| `app` | Shows | Buttons |
+| ----- | ----- | ------- |
+| `den-duty` | Today's chores for each kid | **Done** on a pending chore, **Approve** on one waiting for a grown-up |
+| `nighttime-ninja` | The shopping list (checked items hidden) | An add box, and a checkbox to tick an item off |
+| `wavelength` | Each speaker and what it's playing | Previous, play/pause, next |
+
+Example:
+
+```yaml
+- type: den-app
+  app: den-duty
+  url: https://chores.example.com
+  token: ${DENDUTY_TOKEN}
+  home-id: ${DENDUTY_HOME_ID}
+  approve-groups: [adult]
+
+- type: den-app
+  app: nighttime-ninja
+  url: https://kitchen.example.com
+  token: ${NINJA_TOKEN}
+  home-id: ${NINJA_HOME_ID}
+
+- type: den-app
+  app: wavelength
+  url: https://music.example.com
+  token: ${WAVELENGTH_TOKEN}
+```
+
+#### Properties
+
+| Name | Type | Required | Default |
+| ---- | ---- | -------- | ------- |
+| app | string | yes | |
+| url | string | yes | |
+| token | string | yes | |
+| home-id | string | for den-duty and nighttime-ninja | |
+| kid | string | no | |
+| action-groups | array of strings | no | everyone who can see the page |
+| approve-groups | array of strings | no | everyone allowed by `action-groups` |
+| collapse-after | integer | no | 8 |
+| allow-insecure | boolean | no | false |
+
+##### `token`
+For Den Duty, create a token with "read and control" access so the buttons work. Keep tokens out of the config with `${NAME}` and set the value under Settings, Secrets.
+
+##### `kid`
+Den Duty only. Show just this kid's chores, for example on a kid's own home page.
+
+##### `action-groups` and `approve-groups`
+Who may press the buttons, by household group or username (see [Household](household.md)). Members get their role as a group, so `adult` covers adults and admins. The check runs on the server; the buttons are still drawn for everyone, and a press from someone outside the groups is refused.
+
+### Now in the Den
+
+One list of what's on in the house right now: shows from BingeBandit, games from LootDen and music from Wavelength. Playing things come first and paused ones after. If one app can't be reached, the others still show and a note says which one is missing.
+
+Example:
+
+```yaml
+- type: den-now
+  sources:
+    - app: bingebandit
+      url: https://tv.example.com
+      token: ${BINGEBANDIT_TOKEN}
+    - app: lootden
+      url: https://games.example.com
+      token: ${LOOTDEN_TOKEN}
+    - app: wavelength
+      url: https://music.example.com
+      token: ${WAVELENGTH_TOKEN}
+```
+
+#### Properties
+
+| Name | Type | Required | Default |
+| ---- | ---- | -------- | ------- |
+| sources | array | yes | |
+
+Each source has `app` (`bingebandit`, `lootden` or `wavelength`), `url`, `token`, and optionally `name` (shown when the app can't be reached) and `allow-insecure`. BingeBandit needs an admin API token, and LootDen a personal token.
 
 ### Extension
 Display a widget provided by an external source (3rd party). If you want to learn more about developing extensions, checkout the [extensions documentation](extensions.md) (WIP).
