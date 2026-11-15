@@ -224,6 +224,10 @@ func newApplication(c *config) (*application, error) {
 		return nil, fmt.Errorf("initializing default theme: %v", err)
 	}
 
+	if err := app.prepareSeasonalThemes(); err != nil {
+		return nil, err
+	}
+
 	config.Server.BaseURL = strings.TrimRight(config.Server.BaseURL, "/")
 	if config.Server.CacheDir == "" {
 		config.Server.CacheDir = ".cache"
@@ -620,6 +624,9 @@ type templateData struct {
 
 func (a *application) populateTemplateRequestData(data *templateRequestData, r *http.Request, user *authenticatedUser) {
 	data.Theme = &a.Config.Theme.themeProperties
+	if seasonal := a.seasonalThemeAt(timeNow()); seasonal != nil {
+		data.Theme = seasonal
+	}
 
 	if a.Config.Theme.DisablePicker {
 		return
@@ -631,8 +638,9 @@ func (a *application) populateTemplateRequestData(data *templateRequestData, r *
 		return
 	}
 
+	// Picking "default" in the picker is a choice too, and overrides the season.
 	if selectedTheme, err := r.Cookie("theme"); err == nil {
-		if preset, exists := a.Config.Theme.Presets.Get(selectedTheme.Value); exists {
+		if preset, exists := a.themeByKey(selectedTheme.Value); exists {
 			data.Theme = preset
 		}
 	}

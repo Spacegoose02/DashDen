@@ -76,6 +76,7 @@ type config struct {
 
 		DisablePicker bool                                     `yaml:"disable-picker"`
 		Presets       orderedYAMLMap[string, *themeProperties] `yaml:"presets"`
+		Seasonal      []seasonalTheme                          `yaml:"seasonal"`
 	} `yaml:"theme"`
 
 	Branding struct {
