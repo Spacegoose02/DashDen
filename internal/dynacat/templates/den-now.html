@@ -1,0 +1,30 @@
+{{ template "widget-base.html" . }}
+
+{{- define "widget-content" }}
+{{- if not .Items }}
+<p class="color-subdue">Nothing playing right now.</p>
+{{- else }}
+<ul class="list list-gap-14 collapsible-container" data-collapse-after="6">
+    {{- range .Items }}
+    <li class="den-now-row flex items-center gap-10{{ if .Paused }} den-now-paused{{ end }}">
+        <div class="den-now-art shrink-0" data-kind="{{ .Kind }}">
+            {{- if .ImageURL }}<img src="{{ .ImageURL }}" alt="" loading="lazy">{{ else }}<span aria-hidden="true">{{ if eq .Kind "watching" }}🎬{{ else if eq .Kind "playing" }}🎮{{ else }}🎵{{ end }}</span>{{ end }}
+        </div>
+        <div class="min-width-0 grow">
+            <div class="size-h6 color-subdue text-truncate">{{ .Who }} is {{ .Kind }}{{ if .Paused }} (paused){{ end }}{{ if .Where }} · {{ .Where }}{{ end }}</div>
+            {{- if .Link }}
+            <a class="color-highlight text-truncate block" href="{{ .Link }}" target="_blank" rel="noreferrer">{{ .Title }}</a>
+            {{- else }}
+            <div class="color-highlight text-truncate">{{ .Title }}</div>
+            {{- end }}
+            {{- if .Subtitle }}<div class="size-h6 text-truncate">{{ .Subtitle }}</div>{{ end }}
+            {{- if .Percent }}<div class="den-app-progress"><div style="width: {{ .Percent }}%"></div></div>{{ end }}
+        </div>
+    </li>
+    {{- end }}
+</ul>
+{{- end }}
+{{- if .Failed }}
+<p class="size-h6 color-subdue margin-top-10">Couldn't reach {{ range $i, $n := .Failed }}{{ if $i }}, {{ end }}{{ $n }}{{ end }}.</p>
+{{- end }}
+{{- end }}
