@@ -308,10 +308,249 @@ async function loadAccess() {
     }
 }
 
+function renderSetup(o) {
+    const setup = o.setup;
+    const steps = [
+        {
+            done: setup.hasAdmin,
+            text: setup.hasAdmin ? "Someone in the household is an admin." : "Add yourself to the household as an admin, so only admins can change settings.",
+            action: setup.hasAdmin ? null : (setup.you && !setup.youAreMember
+                ? ["Make me an admin", async () => {
+                    try {
+                        await call("PUT", "/people/" + encodeURIComponent(setup.you), { role: "admin" });
+                        notify("You're an admin now, reloading…");
+                        await waitForConfigReload();
+                        loadOverview();
+                    } catch (e) { notify(e.message, true); }
+                }]
+                : ["Open People", () => showTab("people")]),
+        },
+        {
+            done: setup.signIn,
+            text: setup.signIn ? "Sign-in is set up." : "Set up sign-in with Tinyauth, so DashDen knows who's looking.",
+            action: setup.signIn ? null : ["Open Sign-in", () => showTab("signin")],
+        },
+        {
+            done: setup.appsAdded > 0,
+            text: setup.appsAdded > 0 ? `${setup.appsAdded} of your apps are on the dashboard.` : "Connect your apps: chores, shopping list, music, games and TV.",
+            action: setup.appsAdded > 0 ? null : ["Open Apps", () => showTab("apps")],
+        },
+        {
+            done: !o.missingSecrets,
+            text: o.missingSecrets ? `${o.missingSecrets} secrets the config uses aren't set yet.` : "Every secret the config uses is set.",
+            action: o.missingSecrets ? ["Open Secrets", () => showTab("secrets")] : null,
+        },
+    ];
+    const list = document.getElementById("setup-steps");
+    list.replaceChildren();
+    for (const step of steps) {
+        const li = document.createElement("li");
+        li.className = "settings-step" + (step.done ? " settings-step-done" : "");
+        const mark = document.createElement("span");
+        mark.className = "settings-step-mark";
+        mark.textContent = step.done ? "✓" : "";
+        mark.setAttribute("aria-label", step.done ? "Done" : "To do");
+        const text = document.createElement("span");
+        text.className = "settings-step-text";
+        text.textContent = step.text;
+        li.append(mark, text);
+        if (step.action) li.append(button(step.action[0], step.action[1]));
+        list.append(li);
+    }
+    document.getElementById("setup").hidden = steps.every((s) => s.done);
+}
+
+let appsPages = [];
+
+function appForm(app) {
+    const form = document.createElement("form");
+    form.autocomplete = "off";
+    const fields = document.createElement("div");
+    fields.className = "settings-fields";
+    const field = (label, name, type, set, placeholder) => {
+        const l = document.createElement("label");
+        l.textContent = label;
+        const input = document.createElement("input");
+        input.className = "settings-input";
+        input.name = name;
+        input.type = type;
+        input.placeholder = set ? "Already set, leave empty to keep it" : placeholder;
+        l.append(input);
+        fields.append(l);
+        return l;
+    };
+    field("Address", "url", "url", app.configured[app.prefix + "_URL"], "https://…");
+    const tokenLabel = field("Token", "token", "password", app.configured[app.prefix + "_TOKEN"], "Paste the token");
+    tokenLabel.title = app.tokenHint;
+    if (app.needsHome) field("Home id", "homeId", "text", app.configured[app.prefix + "_HOME_ID"], "From the app's address bar or settings");
+
+    const pageLabel = document.createElement("label");
+    pageLabel.textContent = "Add to page";
+    const pageSelect = document.createElement("select");
+    pageSelect.className = "settings-input";
+    pageSelect.name = "page";
+    pageSelect.append(...appsPages.map((p) => option(String(p.index), p.title)));
+    pageLabel.append(pageSelect);
+    const colLabel = document.createElement("label");
+    colLabel.textContent = "Column";
+    const colSelect = document.createElement("select");
+    colSelect.className = "settings-input";
+    colSelect.name = "column";
+    colLabel.append(colSelect);
+    const fillColumns = () => {
+        const page = appsPages.find((p) => String(p.index) === pageSelect.value);
+        colSelect.replaceChildren(...(page ? page.columns : []).map((c) => option(String(c.index), `${c.index + 1} (${c.size || "small"})`)));
+        const full = page?.columns.find((c) => c.size === "full");
+        if (full) colSelect.value = String(full.index);
+    };
+    pageSelect.addEventListener("change", fillColumns);
+    const family = appsPages.find((p) => /family/i.test(p.title)) || appsPages.find((p) => /\bden\b/i.test(p.title));
+    if (family) pageSelect.value = String(family.index);
+    fillColumns();
+    fields.append(pageLabel, colLabel);
+
+    const hint = document.createElement("p");
+    hint.className = "settings-note color-subdue settings-gap-top";
+    hint.textContent = app.tokenHint;
+
+    const result = document.createElement("p");
+    result.className = "settings-app-result";
+    result.setAttribute("role", "status");
+
+    const actions = document.createElement("div");
+    actions.className = "settings-actions settings-gap-top";
+    const values = () => ({
+        url: form.url.value, token: form.token.value, homeId: form.homeId ? form.homeId.value : "",
+        page: Number(pageSelect.value), column: Number(colSelect.value),
+    });
+    actions.append(button("Test connection", async () => {
+        result.textContent = "Testing…";
+        result.className = "settings-app-result color-subdue";
+        try {
+            const r = await call("POST", `/apps/${app.id}/test`, values());
+            result.textContent = r.message;
+            result.className = "settings-app-result " + (r.ok ? "color-positive" : "color-negative");
+        } catch (e) {
+            result.textContent = e.message;
+            result.className = "settings-app-result color-negative";
+        }
+    }));
+    const add = document.createElement("button");
+    add.type = "submit";
+    add.className = "settings-button";
+    add.textContent = "Add to the dashboard";
+    actions.append(add);
+
+    form.append(fields, hint, actions, result);
+    form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        add.disabled = true;
+        try {
+            await call("POST", `/apps/${app.id}`, values());
+            notify(`Added ${app.name}, reloading…`);
+            await waitForConfigReload();
+            loadApps();
+        } catch (e) {
+            notify(e.message, true);
+            add.disabled = false;
+        }
+    });
+    return form;
+}
+
+async function loadApps() {
+    const list = document.getElementById("apps-list");
+    try {
+        const data = await call("GET", "/apps");
+        appsPages = data.pages;
+        list.replaceChildren();
+        for (const app of data.apps) {
+            const card = document.createElement("article");
+            card.className = "settings-app";
+            const head = document.createElement("div");
+            head.className = "settings-app-head";
+            const icon = document.createElement("span");
+            icon.className = "settings-app-icon";
+            icon.setAttribute("aria-hidden", "true");
+            icon.textContent = app.icon;
+            const text = document.createElement("div");
+            const name = document.createElement("div");
+            name.className = "settings-app-name color-highlight";
+            name.textContent = app.name;
+            const desc = document.createElement("div");
+            desc.className = "color-subdue";
+            desc.textContent = app.description;
+            text.append(name, desc);
+            const status = document.createElement("span");
+            status.className = "settings-app-status " + (app.onPages.length ? "color-positive" : "color-subdue");
+            status.textContent = app.onPages.length ? "On " + app.onPages.join(", ") : "Not added";
+            head.append(icon, text, status);
+            card.append(head);
+
+            let form = null;
+            const toggle = button(app.onPages.length ? "Add again or update" : "Connect", () => {
+                if (form) {
+                    form.remove();
+                    form = null;
+                    return;
+                }
+                form = appForm(app);
+                card.append(form);
+                form.url.focus();
+            });
+            toggle.classList.add("settings-gap-top");
+            card.append(toggle);
+            list.append(card);
+        }
+    } catch (e) {
+        notify("Could not load apps: " + e.message, true);
+    }
+}
+
+const serverForm = document.getElementById("server-form");
+let serverPort = 0;
+
+async function loadServer() {
+    try {
+        const data = await call("GET", "/server");
+        const s = data.settings;
+        serverPort = s.port;
+        serverForm.port.value = s.port;
+        serverForm.proxied.checked = s.proxied;
+        serverForm.allowEditing.checked = s.allowEditing;
+        serverForm.disablePicker.checked = s.disablePicker;
+    } catch (e) {
+        notify("Could not load server settings: " + e.message, true);
+    }
+}
+
+serverForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const f = serverForm;
+    const port = Number(f.port.value);
+    if (port !== serverPort && !confirm(`Move DashDen to port ${port}? This page will try to follow it.`)) return;
+    try {
+        await call("PUT", "/server", {
+            port, proxied: f.proxied.checked, allowEditing: f.allowEditing.checked, disablePicker: f.disablePicker.checked,
+        });
+        if (port !== serverPort && location.port === String(serverPort)) {
+            notify(`Saved. Moving to port ${port}…`);
+            setTimeout(() => { location.port = String(port); }, 2500);
+            return;
+        }
+        notify("Saved server settings, reloading…");
+        await waitForConfigReload();
+        loadServer();
+    } catch (e) {
+        notify(e.message, true);
+    }
+});
+
 async function loadOverview() {
     const facts = document.getElementById("overview-facts");
     try {
         const o = await call("GET", "/overview");
+        renderSetup(o);
         const rows = [
             ["Sign-in", o.signIn.length ? o.signIn.join(", ") : "None, anyone who can reach DashDen can see it"],
             ["Household", o.members ? `${o.members} people, admins: ${o.admins.length ? o.admins.join(", ") : "none yet"}` : "No household profiles yet"],
@@ -433,7 +672,7 @@ async function loadHistory() {
     }
 }
 
-const loaders = { overview: loadOverview, people: loadPeople, signin: loadSignIn, access: loadAccess, secrets: loadSecrets, history: loadHistory };
+const loaders = { overview: loadOverview, people: loadPeople, signin: loadSignIn, access: loadAccess, apps: loadApps, secrets: loadSecrets, history: loadHistory, server: loadServer };
 
 function showTab(name) {
     for (const tab of document.querySelectorAll(".settings-tab")) {
