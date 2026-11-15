@@ -1,0 +1,64 @@
+# DashDen and upstream Dynacat
+
+DashDen is a family fork of [Dynacat](https://github.com/Panonim/dynacat). This file lists what DashDen changes, where, and what to watch for when bringing in upstream changes. Keep it up to date when a change touches an upstream file.
+
+- **Forked from:** `Panonim/dynacat` at `86eccbe` ("Fixed windows deployment").
+- **Go module path:** still `github.com/Panonim/dynacat`, on purpose, so upstream patches apply without rewriting imports.
+- **Keeping up:** `.github/workflows/upstream-watch.yml` runs every Monday and keeps one issue (label `upstream-watch`) listing upstream commits DashDen doesn't have yet. Nothing merges automatically. Cherry-pick what you want, and put the SHA of anything you skip in `.github/upstream-ignore.txt`.
+
+## The rule that keeps merges easy
+
+New behaviour goes in **new files**. An upstream file only gets a short hook that calls into DashDen code: a field, a `case` in a switch, one `if`. When a change needs more than that in an upstream file, list it below.
+
+## What DashDen adds
+
+| Feature | Main files (all new) | Docs |
+| ------- | -------------------- | ---- |
+| Sign-in through Tinyauth / any forward-auth proxy | `auth_proxy.go` | `authentication.md` |
+| Household: names, avatars, roles, a home page per person | `household.go` | `household.md` |
+| Theme follows the person across devices | `user-prefs.go` | `themes.md` |
+| Settings screen: secrets, history and undo, People, Sign-in, Access, Apps, Server, Themes, recovery code | `settings-*.go`, `templates/settings*.html`, `static/js/settings.js`, `static/css/settings.css` | `settings.md` |
+| Den app widgets (Den Duty, Nighttime Ninja, Wavelength) and Now in the Den | `widget-den-app.go`, `widget-den-now.go`, `templates/den-*.html`, `static/js/den-app.js`, `static/css/widget-den-app.css` | `configuration.md` |
+| Per-widget `allowed-users` / `allowed-groups` | `widget-access.go` | `shared-widget-options.md` |
+| Den theme pack and seasonal themes | `theme-seasonal.go`, `settings-themes.go` | `themes.md` |
+| Notice board | `widget-notice-board.go`, `notice-storage.go`, `templates/notice-board.html` | `configuration.md` |
+| Per-person to-do lists | hook in `widget-todo.go`, `dynacat.go` | `configuration.md` |
+| Kiosk mode for wall tablets | `static/js/kiosk.js` | `household.md` |
+| Docker image and upstream watch | `.github/workflows/upstream-watch.yml`, `docker-compose.dashden.yml` | `README.md` |
+
+Every Go file above has a `_test.go` next to it.
+
+## Upstream files DashDen changes
+
+These are where upstream merges can conflict. Paths are under `internal/dynacat/` unless noted.
+
+| File | What DashDen changed | If upstream changes it |
+| ---- | -------------------- | ---------------------- |
+| `config.go` | `auth.proxy`, `theme.seasonal` and `household` fields; proxy auth counts as a sign-in method; calls `validateProxyAuthConfig` and `validateHousehold` | Keep the three fields and the two validate calls |
+| `auth.go` | `authenticatedUser` gains `Name`, `Email`, `IsProxy`, `member` and `DisplayName()`; `getAuthenticatedUser` wraps the result in `withHousehold` and tries the proxy headers | The upstream function body becomes `getSignedInUser`; re-apply the wrapper |
+| `dynacat.go` | Settings, people, apps and themes routes; `widgetAccessByID` filled by `registerWidget`; `userPrefs`, `noticeStorage`, `todoPerPerson`; per-person keys in `authorizeTodoRequest`; seasonal and profile theme in `populateTemplateRequestData` | The biggest risk. Re-apply route blocks and fields by hand; run `go test ./...` |
+| `main.go` | Loads secrets saved from Settings before the config; `requestConfigReload` and a reload mutex | Keep the secrets load ahead of config parsing |
+| `theme.go` | Theme lookups go through `themeByKey` (presets, seasonal, "default"); saves the choice to the person's profile | Keep `themeByKey` as the single lookup |
+| `api.go` | `apiPageWidgetViews` takes the user and drops widgets they can't see | Keep the `user` parameter |
+| `sse.go` | Broadcasts carry the widget ID so limited widgets aren't sent to others | Keep the widget ID argument |
+| `config-editor.go` | `unescapeEmoji` when writing YAML so emoji stay readable | Keep the call in `marshalDocument` |
+| `editor-http.go` | Dynawidgets `owner` query parameter | Small |
+| `widget-dynawidgets.go` | `owner` option and `DYNAWIDGETS_OWNER`, repo keys as `owner~branch` | Re-apply if upstream reworks repo keys |
+| `widget.go` | `case` lines for `den-app`, `den-now`, `notice-board`; `widgetAccess` inline in `widgetBase` | Small |
+| `widget-container.go` | `checkNestedWidgetAccess` for groups and split columns | Small |
+| `widget-search.go` | Widgets limited to some people stay out of search | Small |
+| `widget-todo.go` | `per-person` option | Small |
+| `widget-schema.go` | Editor hints for the new widgets and common `allowed-*` fields | Merge entries; watch for duplicate keys |
+| `templates/page.html` | Kiosk script, den-app script, settings link, avatar and display name in the nav | Small, but spread through the header |
+| `templates/page-content.html` | `$.CanSeeWidget` check around each widget | Keep the check, or limited widgets leak |
+| `templates/document.html` | One line so a theme chosen on the profile wins over the browser's saved theme | Small |
+| `static/js/page.js` | Exposes `dynacatSetupDynamicRelativeTime` on `window` | One line |
+| `static/js/editor.js` | Live theme preview in the styling modal, dynawidgets owner | Re-apply if upstream rewrites the modal |
+| `static/css/site.css` | Kiosk styles at the end | Append-only |
+| `static/css/widgets.css` | Imports `widget-den-app.css` | One line |
+| `.github/workflows/deploy.yml` | Builds the DashDen image | Small |
+| `README.md` | DashDen branding | Keep ours |
+
+## Upstreaming
+
+These are general enough to offer back to Dynacat as pull requests: forward-auth proxy sign-in, per-widget `allowed-users`/`allowed-groups`, seasonal themes, per-person to-do lists, kiosk mode and the notice board. The Den app widgets and the household are DashDen-only.

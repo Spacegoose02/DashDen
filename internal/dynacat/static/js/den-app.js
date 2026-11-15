@@ -1,4 +1,4 @@
-// Buttons on den-app widgets: send the action, then swap in the fresh widget
+// Buttons on den-app and notice-board widgets: send the action, then swap in the fresh widget
 // the server returns.
 (function () {
     const base = (typeof pageData !== 'undefined' && pageData.baseURL) || '';
@@ -19,9 +19,10 @@
 
             const tmp = document.createElement('div');
             tmp.innerHTML = text;
-            const fresh = tmp.querySelector('.den-app');
+            const fresh = tmp.querySelector('[data-den-widget]');
             if (fresh) root.replaceWith(fresh);
             if (typeof window.dynacatSetupCollapsibleLists === 'function') window.dynacatSetupCollapsibleLists();
+            window.dynacatSetupDynamicRelativeTime?.();
         } catch (e) {
             controls.forEach((c) => { c.disabled = false; });
             if (error) {
@@ -35,7 +36,7 @@
     document.addEventListener('click', (event) => {
         const button = event.target.closest('button[data-den-action]');
         if (!button) return;
-        const root = button.closest('.den-app');
+        const root = button.closest('[data-den-widget]');
         if (!root) return;
         const d = button.dataset;
         const body = {};
@@ -47,7 +48,7 @@
         const form = event.target.closest('form[data-den-action]');
         if (!form) return;
         event.preventDefault();
-        const root = form.closest('.den-app');
+        const root = form.closest('[data-den-widget]');
         const input = form.elements.text;
         if (!root || !input.value.trim()) return;
         send(root, form.dataset.denAction, { text: input.value }, [...form.elements]);

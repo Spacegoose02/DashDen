@@ -1920,6 +1920,43 @@ Example:
 
 Each source has `app` (`bingebandit`, `lootden` or `wavelength`), `url`, `token`, and optionally `name` (shown when the app can't be reached) and `allow-insecure`. BingeBandit needs an admin API token, and LootDen a personal token.
 
+### Notice Board
+
+A shared board where the family leaves short notes for each other: "Pizza night Friday", "Dog has been fed". Notes show who left them, with their household avatar, and disappear on their own after a week. Notes are kept in the SQLite database at `server.db-path`.
+
+Anyone can post unless you set `post-groups`. People can remove their own notes and admins can remove any note. Without sign-in, notes are anonymous and anyone can remove them.
+
+Example:
+
+```yaml
+- type: notice-board
+  id: family
+  post-groups: [adult, kid]
+  keep-for: 7d
+```
+
+#### Properties
+
+| Name | Type | Required | Default |
+| ---- | ---- | -------- | ------- |
+| id | string | yes | |
+| post-groups | array | no | everyone |
+| keep-for | duration | no | 7d |
+| max-notes | integer | no | 20 |
+| collapse-after | integer | no | 5 |
+
+##### `id`
+Names the board. Two widgets with the same `id` show the same notes, so you can put one board on several pages. Letters, digits, `-` and `_` only.
+
+##### `post-groups`
+Who may post, by household group or username (see [Household](household.md)). The check runs on the server.
+
+##### `keep-for`
+How long a note stays before it is removed, such as `12h` or `3d`.
+
+##### `max-notes`
+The most notes shown at once. Older notes beyond this are hidden until newer ones expire.
+
 ### Extension
 Display a widget provided by an external source (3rd party). If you want to learn more about developing extensions, checkout the [extensions documentation](extensions.md) (WIP).
 
@@ -3376,6 +3413,7 @@ To delete a task, hover over it and click on the trash icon.
 | id | string | no | |
 | storage | string | no | local |
 | collapse-after | integer | no | |
+| per-person | boolean | no | false |
 
 ##### `id`
 
@@ -3387,6 +3425,10 @@ Controls where tasks are persisted. Accepted values:
 
 - `local` (default) - tasks are stored in the browser's localStorage, same as before. No server-side setup required.
 - `server` - tasks are stored in a SQLite database on the server. Tasks persist across browsers and server restarts. Requires `server.db-path` to be set (or uses the default `/app/assets/dynacat.db`).
+
+##### `per-person`
+
+Gives each signed-in person their own list under the same widget, so one "My jobs" widget on a shared page shows Ava her list and Dad his. Needs `storage: server` and sign-in (see [Authentication](authentication.md)); Dynacat won't start with `per-person` and no sign-in. Someone who isn't signed in sees no list.
 
 ##### `collapse-after`
 

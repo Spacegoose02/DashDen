@@ -1,0 +1,27 @@
+{{ template "widget-base.html" . }}
+
+{{- define "widget-content" }}
+<div class="notice-board" data-den-widget="{{ .GetID }}">
+    <form class="den-app-add flex gap-10" data-den-action="post">
+        <input class="den-app-input grow min-width-0" name="text" maxlength="280" placeholder="Leave a note for everyone" aria-label="New note" autocomplete="off">
+        <button type="submit" class="den-app-button">Post</button>
+    </form>
+    {{- if not .Notes }}
+    <p class="color-subdue">No notes yet.</p>
+    {{- else }}
+    <ul class="list list-gap-14 collapsible-container" data-collapse-after="{{ .CollapseAfter }}">
+        {{- range .Notes }}
+        <li class="notice flex gap-10">
+            <span class="notice-avatar shrink-0" aria-hidden="true">{{ if .AvatarIsImage }}<img src="{{ .Avatar }}" alt="">{{ else if .Avatar }}{{ .Avatar }}{{ else }}{{ .Initial }}{{ end }}</span>
+            <div class="min-width-0 grow">
+                <div class="size-h6 color-subdue">{{ .Author }} · <span {{ dynamicRelativeTimeAttrs .Created }}></span></div>
+                <div class="notice-text color-highlight">{{ .Text }}</div>
+            </div>
+            <button type="button" class="notice-remove shrink-0" data-den-action="delete" data-id="{{ .ID }}" aria-label="Remove note from {{ .Author }}">×</button>
+        </li>
+        {{- end }}
+    </ul>
+    {{- end }}
+    <p class="den-app-error color-negative size-h6" role="status" hidden></p>
+</div>
+{{- end }}

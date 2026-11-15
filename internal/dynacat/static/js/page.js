@@ -2326,6 +2326,7 @@ window.addEventListener('beforeunload', _closeSSE);
 
 window.dynacatSetupPopovers = setupPopovers;
 window.dynacatSetupCollapsibleLists = setupCollapsibleLists;
+window.dynacatSetupDynamicRelativeTime = setupDynamicRelativeTime;
 
 function fetchLazyWidgets() {
     document.querySelectorAll('.widget[data-lazy-load]').forEach(widget => {

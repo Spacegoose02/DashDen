@@ -88,6 +88,8 @@ func newWidget(widgetType string) (widget, error) {
 		w = &denAppWidget{}
 	case "den-now":
 		w = &denNowWidget{}
+	case "notice-board":
+		w = &noticeBoardWidget{}
 	case "server-stats":
 		w = &serverStatsWidget{}
 	case "speedtest":
