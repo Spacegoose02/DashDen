@@ -996,8 +996,16 @@ func (a *application) writeConfigCandidates(candidates map[string][]byte) error 
 		originals[path] = original
 	}
 
+	snapshotDir, err := snapshotConfigFiles(a.configPath, originals, created)
+	if err != nil {
+		slog.Warn("Could not save config history before writing", "error", err)
+	}
+
 	var written []string
 	rollback := func() {
+		if snapshotDir != "" {
+			os.RemoveAll(snapshotDir)
+		}
 		for _, path := range written {
 			if created[path] {
 				os.Remove(path)

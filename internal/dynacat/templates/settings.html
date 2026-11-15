@@ -1,0 +1,55 @@
+{{- template "document.html" . }}
+
+{{- define "document-title" }}Settings{{ end }}
+
+{{- define "document-head-after" }}
+<link rel="stylesheet" href='{{ .App.StaticAssetPath "css/settings.css" }}'>
+<script type="module" src='{{ .App.StaticAssetPath "js/settings.js" }}'></script>
+{{- end }}
+
+{{- define "document-body" }}
+<div class="settings-shell content-bounds">
+    <header class="settings-header">
+        <a class="settings-back color-subdue" href="{{ .App.Config.Server.BaseURL }}/">&larr; Back to the dashboard</a>
+        <h1 class="settings-title color-highlight">Settings</h1>
+        {{- with .AuthUser }}<p class="color-subdue">Signed in as {{ .DisplayName }}</p>{{ end }}
+    </header>
+
+    <nav class="settings-tabs" role="tablist">
+        <button type="button" role="tab" class="settings-tab" data-tab="overview" aria-selected="true">Overview</button>
+        <button type="button" role="tab" class="settings-tab" data-tab="secrets" aria-selected="false">Secrets</button>
+        <button type="button" role="tab" class="settings-tab" data-tab="history" aria-selected="false">History</button>
+    </nav>
+
+    <main>
+        <section class="settings-panel widget-content-frame" data-panel="overview">
+            <dl class="settings-facts" id="overview-facts"><dt>Loading…</dt><dd></dd></dl>
+            <p class="settings-note color-subdue">Pages, widgets, themes and branding are edited on the dashboard itself with the pencil button. Settings covers everything around them.</p>
+        </section>
+
+        <section class="settings-panel widget-content-frame" data-panel="secrets" hidden>
+            <p class="settings-note">API keys and passwords your config uses as <code>${NAME}</code>. Values are stored on the server and never shown again; saving one reloads the dashboard.</p>
+            <form class="settings-form" id="secret-form" autocomplete="off">
+                <input class="settings-input" name="name" placeholder="NAME, e.g. DENDUTY_TOKEN" required pattern="[A-Za-z_][A-Za-z0-9_]*" aria-label="Secret name">
+                <input class="settings-input" name="value" type="password" placeholder="Value" required aria-label="Secret value">
+                <button class="settings-button" type="submit">Save</button>
+            </form>
+            <table class="settings-table" id="secrets-table">
+                <thead><tr><th>Name</th><th>Where it comes from</th><th></th></tr></thead>
+                <tbody></tbody>
+            </table>
+            <p class="settings-note color-subdue" id="secrets-file"></p>
+        </section>
+
+        <section class="settings-panel widget-content-frame" data-panel="history" hidden>
+            <p class="settings-note">Every save from the editor or Settings keeps a copy of the files it changed. Restoring puts those files back as they were just before that save. The restore can itself be undone.</p>
+            <table class="settings-table" id="history-table">
+                <thead><tr><th>Saved</th><th>Files</th><th></th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </section>
+    </main>
+
+    <div class="settings-toast" id="settings-toast" role="status" aria-live="polite" hidden></div>
+</div>
+{{- end }}

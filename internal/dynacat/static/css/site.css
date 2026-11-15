@@ -428,6 +428,18 @@ kbd:active {
     gap: 0.8rem;
 }
 
+.settings-link {
+    display: flex;
+    width: 2rem;
+    height: 2rem;
+    color: var(--color-text-subdue);
+    transition: color .2s;
+}
+
+.settings-link:hover, .settings-link:focus {
+    color: var(--color-text-highlight);
+}
+
 .nav-avatar {
     width: 2.6rem;
     height: 2.6rem;
