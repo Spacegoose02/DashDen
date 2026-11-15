@@ -537,3 +537,33 @@ kbd:active {
 .theme-picker.popover-active .current-theme-preview, .theme-picker:hover {
     opacity: 1;
 }
+
+/* Kiosk mode */
+html.kiosk .header-container,
+html.kiosk .mobile-navigation,
+html.kiosk .mobile-navigation-offset,
+html.kiosk .footer {
+    display: none !important;
+}
+
+html.kiosk main {
+    padding-top: var(--widget-gap);
+}
+
+html.kiosk.kiosk-idle,
+html.kiosk.kiosk-idle * {
+    cursor: none !important;
+}
+
+.kiosk-exit {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 4.8rem;
+    height: 4.8rem;
+    background: none;
+    border: none;
+    opacity: 0;
+    z-index: 1000;
+    cursor: default;
+}
