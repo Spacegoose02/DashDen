@@ -220,6 +220,25 @@ Example:
   location: London, United Kingdom
 ```
 
+### `allowed-users` and `allowed-groups`
+
+Show the widget only to these people or groups. Groups include each [household](household.md) member's role, so `adult` covers adults and admins, and `kid` covers kids. Everyone else gets the page without that widget. Sign-in has to be set up.
+
+```yaml
+- type: den-app
+  app: den-duty
+  allowed-groups: [adult]
+  # ...
+
+- type: to-do
+  title: Ava's list
+  allowed-users: [ava]
+```
+
+The check runs on the server everywhere a widget's content leaves it: the page, a single widget's refresh, button presses, live updates, and the [API](api.md) when `enforce-page-permissions` is on. A limited widget's bookmarks, containers and monitors are also left out of search results.
+
+These options only work on widgets placed directly in a column or in `head-widgets`. To limit widgets inside a `group` or `split-column`, put the option on the group; everything inside it follows.
+
 ## Combining Options
 
 Most of these options can be combined to achieve the desired appearance and behavior:

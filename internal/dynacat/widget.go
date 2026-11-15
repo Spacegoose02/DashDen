@@ -161,6 +161,7 @@ type widget interface {
 	setID(uint64)
 	handleRequest(w http.ResponseWriter, r *http.Request)
 	setHideHeader(bool)
+	access() *widgetAccess
 }
 
 type cacheType int
@@ -194,6 +195,7 @@ type widgetBase struct {
 	cacheType           cacheType            `yaml:"-"`
 	nextUpdate          time.Time            `yaml:"-"`
 	updateRetriedTimes  int                  `yaml:"-"`
+	widgetAccess        `yaml:",inline"`
 }
 
 type widgetProviders struct {

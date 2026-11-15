@@ -95,7 +95,13 @@ type fieldAnnotation struct {
 var alwaysAdvancedFields = map[string]bool{
 	"title": true, "title-icon": true, "title-url": true, "hide-header": true,
 	"css-class": true, "cache": true, "update-interval": true, "lazy-load": true,
-	"frameless": true, "api-id": true,
+	"frameless": true, "api-id": true, "allowed-users": true, "allowed-groups": true,
+}
+
+// Hints for fields every widget has.
+var commonFieldHints = map[string]string{
+	"allowed-users":  "Only these people see the widget. Leave empty for everyone who can see the page.",
+	"allowed-groups": "Only these groups see it, e.g. adult or kid. Not available on widgets inside a group; set it on the group.",
 }
 
 // Fields the user must fill in for the widget to work. Fields of a list entry are addressed
@@ -259,6 +265,7 @@ var fieldAnnotations = map[string]map[string]fieldAnnotation{
 		"headers":        {Advanced: true},
 		"allow-insecure": {Advanced: true},
 		"widget":         {Hint: "Widget from the dynawidgets repository."},
+		"owner":          {Advanced: true, Hint: "GitHub owner of a dynawidgets fork to use instead of Panonim's. DYNAWIDGETS_OWNER sets it for every widget."},
 	},
 	"docker-containers": {
 		"sock-path":    {Advanced: true, Hint: "Defaults to /var/run/docker.sock; can also be a tcp://host:port or http://host:port address."},
@@ -364,6 +371,9 @@ func applyFieldHints(fields []widgetFieldSchema, prefix string, ann map[string]f
 	for i := range fields {
 		path := prefix + fields[i].Name
 		fields[i].Hint = ann[path].Hint
+		if fields[i].Hint == "" && prefix == "" {
+			fields[i].Hint = commonFieldHints[path]
+		}
 		applyFieldHints(fields[i].Item, path+".", ann)
 	}
 }

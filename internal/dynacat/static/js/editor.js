@@ -853,11 +853,12 @@ function findConfigVariables(text) {
 }
 
 // Blocks the save instead of letting it fail, since the config cannot load while a value is missing.
-async function confirmDynawidgetVariables({ widget, repo }) {
+async function confirmDynawidgetVariables({ widget, repo, owner }) {
     if (!widget) return true;
 
     const params = new URLSearchParams({ widget });
     if (repo) params.set("repo", repo);
+    if (owner) params.set("owner", owner);
 
     let variables;
     try {
