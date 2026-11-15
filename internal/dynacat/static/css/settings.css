@@ -1,0 +1,204 @@
+.settings-shell {
+    max-width: 900px;
+    margin: 0 auto;
+    padding-block: 3rem 6rem;
+    font-size: var(--font-size-base);
+}
+
+.settings-header {
+    margin-bottom: 2rem;
+}
+
+.settings-back {
+    display: inline-block;
+    margin-bottom: 1.5rem;
+}
+
+.settings-back:hover {
+    color: var(--color-text-highlight);
+}
+
+.settings-title {
+    font-size: 2.6rem;
+    font-weight: 600;
+    margin-bottom: 0.4rem;
+}
+
+.settings-tabs {
+    display: flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+}
+
+.settings-tab {
+    background: none;
+    border: 1px solid var(--color-widget-content-border);
+    border-radius: var(--border-radius);
+    color: var(--color-text-subdue);
+    padding: 0.7rem 1.4rem;
+    font: inherit;
+    cursor: pointer;
+}
+
+.settings-tab[aria-selected="true"] {
+    color: var(--color-text-highlight);
+    border-color: var(--color-primary);
+}
+
+.settings-panel {
+    padding: var(--widget-content-padding);
+}
+
+.settings-note {
+    margin-bottom: 1.5rem;
+    max-width: 65ch;
+}
+
+.settings-facts {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 0.8rem 2rem;
+    margin-bottom: 2rem;
+}
+
+.settings-facts dt {
+    color: var(--color-text-subdue);
+}
+
+.settings-facts dd {
+    color: var(--color-text-highlight);
+    overflow-wrap: anywhere;
+}
+
+.settings-form {
+    display: flex;
+    gap: 0.8rem;
+    flex-wrap: wrap;
+    margin-bottom: 2rem;
+}
+
+.settings-input {
+    flex: 1 1 18rem;
+    min-width: 0;
+    background: var(--color-widget-background);
+    border: 1px solid var(--color-widget-content-border);
+    border-radius: var(--border-radius);
+    color: var(--color-text-highlight);
+    padding: 0.8rem 1rem;
+    font: inherit;
+}
+
+.settings-input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+}
+
+.settings-button {
+    background: var(--color-primary);
+    color: var(--color-widget-background);
+    border: none;
+    border-radius: var(--border-radius);
+    padding: 0.8rem 1.6rem;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.settings-button-small {
+    padding: 0.4rem 1rem;
+    font-weight: 500;
+    background: none;
+    color: var(--color-text-base);
+    border: 1px solid var(--color-widget-content-border);
+}
+
+.settings-button-small:hover {
+    color: var(--color-text-highlight);
+    border-color: var(--color-text-subdue);
+}
+
+.settings-button-danger:hover {
+    color: var(--color-negative);
+    border-color: var(--color-negative);
+}
+
+.settings-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.settings-table th {
+    text-align: left;
+    color: var(--color-text-subdue);
+    font-weight: 500;
+    padding: 0.6rem 0.8rem 0.6rem 0;
+    border-bottom: 1px solid var(--color-separator);
+}
+
+.settings-table td {
+    padding: 0.8rem 0.8rem 0.8rem 0;
+    border-bottom: 1px solid var(--color-separator);
+    vertical-align: top;
+    overflow-wrap: anywhere;
+}
+
+.settings-actions {
+    display: flex;
+    gap: 0.6rem;
+    justify-content: flex-end;
+}
+
+.settings-mono {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.9em;
+}
+
+.settings-toast {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    left: auto;
+    max-width: calc(100vw - 4rem);
+    background: var(--color-widget-background);
+    border: 1px solid var(--color-primary);
+    border-radius: var(--border-radius);
+    padding: 1rem 1.4rem;
+    color: var(--color-text-highlight);
+    z-index: 100;
+}
+
+.settings-toast-error {
+    border-color: var(--color-negative);
+}
+
+@media (max-width: 600px) {
+    .settings-facts {
+        grid-template-columns: 1fr;
+        gap: 0.2rem;
+    }
+
+    .settings-facts dd {
+        margin-bottom: 1rem;
+    }
+
+    .settings-table thead {
+        display: none;
+    }
+
+    .settings-table tr {
+        display: block;
+        border-bottom: 1px solid var(--color-separator);
+        padding: 0.8rem 0;
+    }
+
+    .settings-table td {
+        display: block;
+        border: none;
+        padding: 0.2rem 0;
+    }
+
+    .settings-actions {
+        justify-content: flex-start;
+    }
+}

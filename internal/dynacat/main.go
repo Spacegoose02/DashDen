@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -30,6 +31,11 @@ func Main() int {
 	}
 
 	options.configPath = resolveConfigPath(options.configPath)
+
+	if err := loadManagedSecrets(options.configPath); err != nil {
+		slog.Error("Failed to load secrets saved from Settings", "error", err)
+		return 1
+	}
 
 	switch options.intent {
 	case cliIntentVersionPrint:
@@ -135,7 +141,11 @@ func serveApp(configPath string) error {
 
 	warnIfDirNotWritable(filepath.Dir(configPath))
 
+	var reloadMu sync.Mutex
 	onChange := func(newContents []byte) {
+		reloadMu.Lock()
+		defer reloadMu.Unlock()
+
 		if stopServer != nil {
 			slog.Info("Config file changed, reloading")
 		}
@@ -186,6 +196,17 @@ func serveApp(configPath string) error {
 
 	onErr := func(err error) {
 		slog.Error("Error watching config files", "error", err)
+	}
+
+	// Settings changes that live outside the config files, such as secrets,
+	// reload the same way an edited config file does.
+	requestConfigReload = func() {
+		contents, _, err := parseYAMLIncludes(configPath)
+		if err != nil {
+			slog.Error("Reload after a settings change failed", "error", err)
+			return
+		}
+		onChange(contents)
 	}
 
 	configContents, configIncludes, err := parseYAMLIncludes(configPath)

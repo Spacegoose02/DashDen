@@ -1048,6 +1048,7 @@ func (a *application) server() (func() error, func() error) {
 	}
 
 	if a.EditorEnabled {
+		a.registerSettingsRoutes(mux)
 		mux.HandleFunc("GET /api/editor/schema", a.handleEditorSchema)
 		mux.HandleFunc("GET /api/editor/status", a.handleEditorStatus)
 		mux.HandleFunc("GET /api/editor/config", a.handleEditorConfigLoad)
