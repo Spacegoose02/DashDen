@@ -84,6 +84,10 @@ func newWidget(widgetType string) (widget, error) {
 		w = &dockerContainersWidget{}
 	case "docker-controller":
 		w = &dockerControllerWidget{}
+	case "den-app":
+		w = &denAppWidget{}
+	case "den-now":
+		w = &denNowWidget{}
 	case "server-stats":
 		w = &serverStatsWidget{}
 	case "speedtest":

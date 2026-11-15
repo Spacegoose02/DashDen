@@ -1,0 +1,84 @@
+{{ template "widget-base.html" . }}
+
+{{- define "widget-content" }}
+<div class="den-app" data-den-widget="{{ .GetID }}">
+{{- if eq .App "den-duty" }}
+    {{- if not .Kids }}
+    <p class="color-subdue">No chores today.</p>
+    {{- end }}
+    {{- range .Kids }}
+    {{- $kid := .Kid }}
+    <div class="den-app-group">
+        <div class="den-app-group-title size-h4 color-highlight">{{ .Kid }}</div>
+        <ul class="list list-gap-8">
+            {{- range .Chores }}
+            <li class="den-app-row flex items-center gap-10">
+                <span class="den-app-icon shrink-0" aria-hidden="true">{{ if .Icon }}{{ .Icon }}{{ else }}•{{ end }}</span>
+                <div class="min-width-0 grow">
+                    <div class="text-truncate {{ if eq .Status "approved" }}color-subdue den-app-done{{ else }}color-highlight{{ end }}">{{ .Title }}</div>
+                    <div class="size-h6 color-subdue">{{ .Points }} pts{{ if eq .Status "submitted" }} · waiting for a grown-up{{ end }}</div>
+                </div>
+                {{- if eq .Status "pending" }}
+                <button type="button" class="den-app-button" data-den-action="complete" data-kid="{{ $kid }}" data-chore="{{ .ID }}">Done</button>
+                {{- else if eq .Status "submitted" }}
+                <button type="button" class="den-app-button den-app-button-primary" data-den-action="approve" data-kid="{{ $kid }}" data-chore="{{ .ID }}">Approve</button>
+                {{- else }}
+                <span class="den-app-check color-positive" aria-label="Approved">✓</span>
+                {{- end }}
+            </li>
+            {{- end }}
+        </ul>
+    </div>
+    {{- end }}
+
+{{- else if eq .App "nighttime-ninja" }}
+    <form class="den-app-add flex gap-10" data-den-action="add">
+        <input class="den-app-input grow min-width-0" name="text" maxlength="500" placeholder="Add to the list" aria-label="Add to the shopping list" autocomplete="off">
+        <button type="submit" class="den-app-button">Add</button>
+    </form>
+    {{- if not .Shopping }}
+    <p class="color-subdue">The list is empty.</p>
+    {{- else }}
+    <ul class="list list-gap-8 collapsible-container" data-collapse-after="{{ .CollapseAfter }}">
+        {{- range .Shopping }}
+        <li class="den-app-row flex items-center gap-10">
+            <button type="button" class="den-app-checkbox shrink-0" data-den-action="check" data-id="{{ .ID }}" aria-label="Got {{ .Name }}"></button>
+            <span class="color-highlight text-truncate">{{ .Label }}</span>
+        </li>
+        {{- end }}
+    </ul>
+    {{- end }}
+
+{{- else if eq .App "wavelength" }}
+    {{- if not .Players }}
+    <p class="color-subdue">No players found.</p>
+    {{- end }}
+    <ul class="list list-gap-14">
+        {{- range .Players }}
+        <li class="den-app-player">
+            <div class="flex items-center gap-10">
+                <div class="min-width-0 grow">
+                    <div class="size-h6 color-subdue text-truncate">{{ .Name }}{{ if ne .State "playing" }} · {{ .State }}{{ end }}</div>
+                    {{- if .Title }}
+                    <div class="color-highlight text-truncate">{{ .Title }}</div>
+                    <div class="size-h6 text-truncate">{{ .Artist }}</div>
+                    {{- else }}
+                    <div class="color-subdue">Nothing queued</div>
+                    {{- end }}
+                </div>
+                <div class="den-app-controls flex gap-5 shrink-0">
+                    <button type="button" class="den-app-icon-button" data-den-action="control" data-op="prev" data-id="{{ .ID }}" aria-label="Previous">⏮</button>
+                    <button type="button" class="den-app-icon-button" data-den-action="control" data-op="toggle" data-id="{{ .ID }}" aria-label="{{ if eq .State "playing" }}Pause{{ else }}Play{{ end }}">{{ if eq .State "playing" }}⏸{{ else }}▶{{ end }}</button>
+                    <button type="button" class="den-app-icon-button" data-den-action="control" data-op="next" data-id="{{ .ID }}" aria-label="Next">⏭</button>
+                </div>
+            </div>
+            {{- if .Duration }}
+            <div class="den-app-progress"><div style="width: {{ .Percent }}%"></div></div>
+            {{- end }}
+        </li>
+        {{- end }}
+    </ul>
+{{- end }}
+    <p class="den-app-error color-negative size-h6" role="status" hidden></p>
+</div>
+{{- end }}

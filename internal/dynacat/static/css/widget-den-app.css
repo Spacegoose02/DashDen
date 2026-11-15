@@ -1,0 +1,139 @@
+.den-app-group + .den-app-group {
+    margin-top: 1.6rem;
+}
+
+.den-app-group-title {
+    margin-bottom: 0.6rem;
+}
+
+.den-app-icon {
+    width: 2.2rem;
+    text-align: center;
+    font-size: 1.6rem;
+}
+
+.den-app-done {
+    text-decoration: line-through;
+}
+
+.den-app-button {
+    background: none;
+    border: 1px solid var(--color-widget-content-border);
+    border-radius: var(--border-radius);
+    color: var(--color-text-base);
+    padding: 0.4rem 1rem;
+    font: inherit;
+    font-size: var(--font-size-h6);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: color .2s, border-color .2s;
+}
+
+.den-app-button:hover {
+    color: var(--color-text-highlight);
+    border-color: var(--color-text-subdue);
+}
+
+.den-app-button-primary {
+    color: var(--color-primary);
+    border-color: var(--color-primary);
+}
+
+.den-app-button:disabled,
+.den-app-icon-button:disabled,
+.den-app-checkbox:disabled {
+    opacity: 0.5;
+    cursor: wait;
+}
+
+.den-app-check {
+    width: 2.2rem;
+    text-align: center;
+}
+
+.den-app-add {
+    margin-bottom: 1.2rem;
+}
+
+.den-app-input {
+    background: var(--color-widget-background);
+    border: 1px solid var(--color-widget-content-border);
+    border-radius: var(--border-radius);
+    color: var(--color-text-highlight);
+    padding: 0.5rem 0.9rem;
+    font: inherit;
+}
+
+.den-app-input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+}
+
+.den-app-checkbox {
+    width: 1.8rem;
+    height: 1.8rem;
+    border: 2px solid var(--color-text-subdue);
+    border-radius: 0.4rem;
+    background: none;
+    cursor: pointer;
+    padding: 0;
+}
+
+.den-app-checkbox:hover {
+    border-color: var(--color-primary);
+}
+
+.den-app-icon-button {
+    background: none;
+    border: none;
+    color: var(--color-text-base);
+    font-size: 1.6rem;
+    width: 2.6rem;
+    height: 2.6rem;
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.den-app-icon-button:hover {
+    color: var(--color-text-highlight);
+    background: var(--color-widget-background-highlight);
+}
+
+.den-app-progress {
+    height: 3px;
+    margin-top: 0.6rem;
+    background: var(--color-separator);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.den-app-progress > div {
+    height: 100%;
+    background: var(--color-primary);
+}
+
+.den-app-error {
+    margin-top: 1rem;
+}
+
+.den-now-art {
+    width: 4rem;
+    height: 4rem;
+    border-radius: var(--border-radius);
+    background: var(--color-widget-background-highlight);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    font-size: 1.8rem;
+}
+
+.den-now-art img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.den-now-paused {
+    opacity: 0.6;
+}
