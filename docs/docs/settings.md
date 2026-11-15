@@ -18,7 +18,7 @@ Until the basics are done, the Overview tab starts with a short checklist: make 
 
 Add, edit and remove [household](household.md) members: username, name, avatar (an emoji, initials or an image URL), role, home page, theme and extra groups. The username has to match what the person signs in with.
 
-If password sign-in is in use, you can also set a person's password here. Only a bcrypt hash is written to the config (`auth.users.<username>.password-hash`). If the config has no `auth.secret-key` yet, one is generated, saved as `DASHDEN_AUTH_SECRET` in the secrets file, and referred to as `${DASHDEN_AUTH_SECRET}`.
+If password sign-in is in use, you can also set a person's password here. Only a bcrypt hash is written to the config (`auth.users.<username>.password-hash`). If the config has no `auth.secret-key` yet, one is generated, saved as `DASHDEN_AUTH_SECRET` in `config/.env`, and referred to as `${DASHDEN_AUTH_SECRET}`.
 
 To stop you locking yourself out, Settings won't let you remove yourself or take admin away from yourself.
 
@@ -72,9 +72,9 @@ API keys and passwords your config reads as `${NAME}` (or `${env:NAME}`). The li
 | Container or env file | Comes from Docker's `env_file`, the container environment or `--env-file` |
 | Missing | The config uses it but nothing sets it |
 
-Values saved here go into `dashden-secrets.env` next to your main config file, with `0600` permissions. That file is loaded at start-up after `--env-file`, so a value saved here wins over an older one from your `.env`. Values are never sent back to the browser. Saving or removing a secret reloads the dashboard so widgets pick it up straight away.
+Secrets live in the `.env` file next to your main config file (`config/.env` in Docker). DashDen loads it at start-up, so you don't need to pass it to the container, and its values win over the container's own environment. Saving or removing a secret here edits just that line of the file and keeps your comments and order. A new file is created with `0600` permissions. Values are never sent back to the browser, and saving or removing a secret reloads the dashboard so widgets pick it up straight away.
 
-Add `dashden-secrets.env` to your config repository's `.gitignore`.
+Secrets saved by earlier DashDen builds in `dashden-secrets.env` are still read, and are moved into `.env` the next time you save one. Keep `.env` out of your config repository with `.gitignore`.
 
 ## History
 
