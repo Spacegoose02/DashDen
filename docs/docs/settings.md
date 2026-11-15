@@ -10,6 +10,10 @@ If any [household](household.md) member has `role: admin`, only admins can open 
 
 This tab covers the sign-in methods in use, the household, the number of pages, how many secrets the config uses without a value, how many saved versions there are, and where the config file lives.
 
+## Getting started
+
+Until the basics are done, the Overview tab starts with a short checklist: make yourself a household admin (one click if you're signed in and not in the household yet), set up sign-in, connect your apps, and fill in any missing secrets. It disappears once everything is ticked.
+
 ## People
 
 Add, edit and remove [household](household.md) members: username, name, avatar (an emoji, initials or an image URL), role, home page, theme and extra groups. The username has to match what the person signs in with.
@@ -27,6 +31,23 @@ Settings refuses a change that would sign you out: turning the proxy off when it
 ## Access
 
 Who can see each page, as users and groups (`allowed-users` and `allowed-groups` on the page). Groups include each person's role, so `adult` covers adults and admins. Leaving both empty means everyone who can sign in. Settings won't let you hide a page from yourself. Pages that live in an included file are shown, but you change them in that file.
+
+## Apps
+
+Connect the household's own apps and add their widgets without writing YAML:
+
+| App | Adds |
+| --- | ---- |
+| Den Duty | A `den-app` chores widget with Done and Approve buttons (approval limited to `adult` when you have a household) |
+| Nighttime Ninja | A `den-app` shopping list |
+| Wavelength | A `den-app` music controller |
+| LootDen, BingeBandit | A source in the column's "Now in the Den" (`den-now`) widget, creating it if needed |
+
+Fill in the address, token and, where needed, the home id. **Test connection** checks them against the app before anything is saved. **Add to the dashboard** saves them as secrets named `DENDUTY_URL`, `DENDUTY_TOKEN`, `DENDUTY_HOME_ID` (and likewise `NINJA_`, `WAVELENGTH_`, `LOOTDEN_`, `BINGEBANDIT_`), then adds the widget to the page and column you picked, referring to them as `${NAME}`. Fields that are already set, for example from your `.env`, can be left empty.
+
+## Server
+
+The port, whether DashDen is behind a reverse proxy, whether the dashboard can be edited from the browser, and whether the theme picker is shown. Changing the port moves DashDen; the page follows it when you opened it on that port directly. If there's no household admin, Settings won't let you turn off editing, because that would close Settings too.
 
 ## Recovery
 

@@ -39,6 +39,7 @@ func (a *application) registerSettingsRoutes(mux *http.ServeMux) {
 		mux.HandleFunc("POST /settings/recover", a.handleRecoveryPage)
 	}
 	a.registerSettingsPeopleRoutes(mux)
+	a.registerSettingsAppsRoutes(mux)
 	mux.HandleFunc("GET /api/settings/overview", a.settingsJSON(a.handleSettingsOverview))
 	mux.HandleFunc("GET /api/settings/secrets", a.settingsJSON(a.handleSettingsSecretsList))
 	mux.HandleFunc("PUT /api/settings/secrets/{name}", a.settingsJSON(a.handleSettingsSecretSet))
@@ -122,15 +123,25 @@ type settingsPageData struct {
 }
 
 type settingsOverview struct {
-	Version       string   `json:"version"`
-	SignIn        []string `json:"signIn"`
-	Members       int      `json:"members"`
-	Admins        []string `json:"admins"`
-	Pages         int      `json:"pages"`
-	ConfigPath    string   `json:"configPath"`
-	SecretsFile   string   `json:"secretsFile"`
-	MissingSecret int      `json:"missingSecrets"`
-	Snapshots     int      `json:"snapshots"`
+	Version       string        `json:"version"`
+	SignIn        []string      `json:"signIn"`
+	Members       int           `json:"members"`
+	Admins        []string      `json:"admins"`
+	Pages         int           `json:"pages"`
+	ConfigPath    string        `json:"configPath"`
+	SecretsFile   string        `json:"secretsFile"`
+	MissingSecret int           `json:"missingSecrets"`
+	Snapshots     int           `json:"snapshots"`
+	Setup         settingsSetup `json:"setup"`
+}
+
+// settingsSetup drives the getting-started steps on the Overview tab.
+type settingsSetup struct {
+	You          string `json:"you"`
+	YouAreMember bool   `json:"youAreMember"`
+	HasAdmin     bool   `json:"hasAdmin"`
+	SignIn       bool   `json:"signIn"`
+	AppsAdded    int    `json:"appsAdded"`
 }
 
 func (a *application) handleSettingsOverview(w http.ResponseWriter, r *http.Request) {
@@ -168,6 +179,11 @@ func (a *application) handleSettingsOverview(w http.ResponseWriter, r *http.Requ
 	}
 	if snaps, err := listConfigSnapshots(a.configPath); err == nil {
 		o.Snapshots = len(snaps)
+	}
+	o.Setup = settingsSetup{HasAdmin: a.hasHouseholdAdmin(), SignIn: a.AnyAuthEnabled(), AppsAdded: len(a.appsInUse())}
+	if u := a.settingsUser(w, r); u != nil {
+		o.Setup.You = u.Username
+		o.Setup.YouAreMember = u.Member() != nil
 	}
 	writeJSON(w, http.StatusOK, o)
 }

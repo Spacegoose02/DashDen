@@ -21,12 +21,18 @@
         <button type="button" role="tab" class="settings-tab" data-tab="people" aria-selected="false">People</button>
         <button type="button" role="tab" class="settings-tab" data-tab="signin" aria-selected="false">Sign-in</button>
         <button type="button" role="tab" class="settings-tab" data-tab="access" aria-selected="false">Access</button>
+        <button type="button" role="tab" class="settings-tab" data-tab="apps" aria-selected="false">Apps</button>
         <button type="button" role="tab" class="settings-tab" data-tab="secrets" aria-selected="false">Secrets</button>
         <button type="button" role="tab" class="settings-tab" data-tab="history" aria-selected="false">History</button>
+        <button type="button" role="tab" class="settings-tab" data-tab="server" aria-selected="false">Server</button>
     </nav>
 
     <main>
         <section class="settings-panel widget-content-frame" data-panel="overview">
+            <div class="settings-setup" id="setup" hidden>
+                <h2 class="settings-card-title color-highlight">Getting started</h2>
+                <ol class="settings-steps" id="setup-steps"></ol>
+            </div>
             <dl class="settings-facts" id="overview-facts"><dt>Loading…</dt><dd></dd></dl>
             <p class="settings-note color-subdue">Pages, widgets, themes and branding are edited on the dashboard itself with the pencil button. Settings covers everything around them.</p>
         </section>
@@ -86,6 +92,26 @@
                 <tbody></tbody>
             </table>
             <p class="settings-note color-subdue settings-gap-top" id="access-known"></p>
+        </section>
+
+        <section class="settings-panel widget-content-frame" data-panel="apps" hidden>
+            <p class="settings-note">Your household's own apps. Connect one, test it, and add its widget to a page. Addresses and tokens are saved as secrets, so they never end up in the config file.</p>
+            <div class="settings-apps" id="apps-list"></div>
+        </section>
+
+        <section class="settings-panel widget-content-frame" data-panel="server" hidden>
+            <form id="server-form" autocomplete="off">
+                <div class="settings-fields">
+                    <label>Port<input class="settings-input" name="port" type="number" min="1" max="65535" required></label>
+                </div>
+                <p class="settings-note color-subdue settings-gap-top">Changing the port moves DashDen to a new address. If it's behind a reverse proxy or Tinyauth, update that too.</p>
+                <label class="settings-check"><input type="checkbox" name="proxied"> DashDen is behind a reverse proxy</label>
+                <label class="settings-check settings-gap-top"><input type="checkbox" name="allowEditing"> Allow editing the dashboard from the browser</label>
+                <label class="settings-check settings-gap-top"><input type="checkbox" name="disablePicker"> Hide the theme picker</label>
+                <div class="settings-actions settings-gap-top">
+                    <button type="submit" class="settings-button">Save server settings</button>
+                </div>
+            </form>
         </section>
 
         <section class="settings-panel widget-content-frame" data-panel="secrets" hidden>
