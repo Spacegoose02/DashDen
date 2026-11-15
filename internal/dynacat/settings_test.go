@@ -194,3 +194,53 @@ func TestSettingsRefusesCrossSiteWrites(t *testing.T) {
 		t.Fatalf("a cross-origin DELETE must be refused, got %d", code)
 	}
 }
+
+func TestSecretsLiveInConfigDotEnv(t *testing.T) {
+	dir := t.TempDir()
+	configPath := filepath.Join(dir, "dynacat.yml")
+	envPath := filepath.Join(dir, ".env")
+	t.Cleanup(func() {
+		for _, n := range []string{"DD_A", "DD_B", "DD_C", "DD_OLD"} {
+			os.Unsetenv(n)
+		}
+	})
+
+	original := "# Weather\nDD_A=one\n\nexport DD_B=\"two\"\n"
+	os.WriteFile(envPath, []byte(original), 0o640)
+	os.WriteFile(filepath.Join(dir, "dashden-secrets.env"), []byte("DD_OLD=\"legacy\"\n"), 0o600)
+
+	// The container may have been started with an older copy of the file.
+	os.Setenv("DD_A", "stale")
+	if err := loadManagedSecrets(configPath); err != nil {
+		t.Fatal(err)
+	}
+	if os.Getenv("DD_A") != "one" || os.Getenv("DD_B") != "two" || os.Getenv("DD_OLD") != "legacy" {
+		t.Fatalf("config/.env should be loaded at start-up and win: A=%q B=%q OLD=%q", os.Getenv("DD_A"), os.Getenv("DD_B"), os.Getenv("DD_OLD"))
+	}
+
+	v := "three"
+	if err := setManagedSecret(configPath, "DD_B", &v); err != nil {
+		t.Fatal(err)
+	}
+	if err := setManagedSecret(configPath, "DD_C", &v); err != nil {
+		t.Fatal(err)
+	}
+	got := string(mustRead(t, envPath))
+	want := "# Weather\nDD_A=one\n\nDD_B=\"three\"\nDD_OLD=\"legacy\"\nDD_C=\"three\"\n"
+	if got != want {
+		t.Fatalf("the file should be edited in place:\n%s\nwant:\n%s", got, want)
+	}
+	if info, _ := os.Stat(envPath); info.Mode().Perm() != 0o640 {
+		t.Fatalf("permissions changed to %v", info.Mode().Perm())
+	}
+	if _, err := os.Stat(filepath.Join(dir, "dashden-secrets.env")); !os.IsNotExist(err) {
+		t.Fatal("the old secrets file should be folded into .env")
+	}
+
+	if err := setManagedSecret(configPath, "DD_A", nil); err != nil {
+		t.Fatal(err)
+	}
+	if got := string(mustRead(t, envPath)); strings.Contains(got, "DD_A") || !strings.HasPrefix(got, "# Weather\n\nDD_B") {
+		t.Fatalf("removing should drop just that line: %q", got)
+	}
+}

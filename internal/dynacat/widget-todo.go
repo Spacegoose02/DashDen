@@ -14,8 +14,8 @@ type todoWidget struct {
 	TodoID     string        `yaml:"id"`
 	Storage    string        `yaml:"storage"`
 	// PerPerson gives every signed-in person their own list under the same id.
-	PerPerson bool `yaml:"per-person"`
-	CollapseAfter *int       `yaml:"collapse-after"`
+	PerPerson     bool `yaml:"per-person"`
+	CollapseAfter *int `yaml:"collapse-after"`
 }
 
 func (widget *todoWidget) initialize() error {

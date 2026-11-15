@@ -12,11 +12,18 @@ import (
 	"sync"
 )
 
-// DashDen keeps secrets set from the Settings screen in its own env file next
-// to the config, loaded at start-up after --env-file, so they win over older
-// values. The file is written with 0600 permissions and values are never sent
+// DashDen keeps secrets in the .env file next to the config (config/.env in
+// Docker), the same file people already keep their keys in. It is loaded at
+// start-up, after --env-file, and its values win over the container's
+// environment, so a value changed in Settings sticks after a restart even when
+// the container was started with an older copy of the file. Settings edits the
+// file in place: other lines, comments and order are kept. Values are never sent
 // back to the browser.
-const managedSecretsFileName = "dashden-secrets.env"
+const managedSecretsFileName = ".env"
+
+// Secrets saved by earlier DashDen builds. Still loaded, and folded into .env
+// the next time a secret is saved.
+const legacySecretsFileName = "dashden-secrets.env"
 
 var secretNamePattern = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]{0,127}$`)
 
@@ -29,12 +36,20 @@ func managedSecretsPath(configPath string) string {
 	return filepath.Join(filepath.Dir(configPath), managedSecretsFileName)
 }
 
+func legacySecretsPath(configPath string) string {
+	return filepath.Join(filepath.Dir(configPath), legacySecretsFileName)
+}
+
 func loadManagedSecrets(configPath string) error {
-	path := managedSecretsPath(configPath)
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		return nil
+	for _, path := range []string{managedSecretsPath(configPath), legacySecretsPath(configPath)} {
+		if _, err := os.Stat(path); os.IsNotExist(err) {
+			continue
+		}
+		if err := loadEnvFile(path); err != nil {
+			return fmt.Errorf("%s: %w", filepath.Base(path), err)
+		}
 	}
-	return loadEnvFile(path)
+	return nil
 }
 
 func readManagedSecrets(path string) (map[string]string, error) {
@@ -50,39 +65,105 @@ func readManagedSecrets(path string) (map[string]string, error) {
 
 	scanner := bufio.NewScanner(bytes.NewReader(data))
 	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
+		if key, value, ok := parseEnvLine(scanner.Text()); ok {
+			values[key] = value
 		}
-		key, value, ok := strings.Cut(strings.TrimPrefix(line, "export "), "=")
-		if !ok {
-			continue
-		}
-		values[strings.TrimSpace(key)] = parseEnvValue(strings.TrimSpace(value))
 	}
 
 	return values, scanner.Err()
 }
 
-func writeManagedSecrets(path string, values map[string]string) error {
-	names := make([]string, 0, len(values))
-	for name := range values {
-		names = append(names, name)
+func parseEnvLine(line string) (string, string, bool) {
+	line = strings.TrimSpace(line)
+	if line == "" || strings.HasPrefix(line, "#") {
+		return "", "", false
+	}
+	key, value, ok := strings.Cut(strings.TrimPrefix(line, "export "), "=")
+	if !ok {
+		return "", "", false
+	}
+	return strings.TrimSpace(key), parseEnvValue(strings.TrimSpace(value)), true
+}
+
+func formatEnvLine(name, value string) string {
+	v := strings.NewReplacer(`\`, `\\`, `"`, `\"`).Replace(value)
+	return fmt.Sprintf("%s=\"%s\"", name, v)
+}
+
+// updateEnvFile sets or removes names in the env file, keeping every other
+// line as it was. A nil value removes the name.
+func updateEnvFile(path string, changes map[string]*string) error {
+	data, err := os.ReadFile(path)
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+
+	mode := os.FileMode(0o600)
+	if info, err := os.Stat(path); err == nil {
+		mode = info.Mode().Perm()
+	}
+
+	var lines []string
+	if len(data) > 0 {
+		lines = strings.Split(strings.TrimRight(string(data), "\n"), "\n")
+	}
+
+	done := map[string]bool{}
+	out := lines[:0:0]
+	for _, line := range lines {
+		key, _, ok := parseEnvLine(line)
+		change, changing := changes[key]
+		if !ok || !changing {
+			out = append(out, line)
+			continue
+		}
+		if change == nil || done[key] {
+			continue
+		}
+		out = append(out, formatEnvLine(key, *change))
+		done[key] = true
+	}
+
+	names := make([]string, 0, len(changes))
+	for name, v := range changes {
+		if v != nil && !done[name] {
+			names = append(names, name)
+		}
 	}
 	sort.Strings(names)
-
-	var b strings.Builder
-	b.WriteString("# Written by DashDen Settings. Values here override the same names from --env-file.\n")
 	for _, name := range names {
-		v := strings.NewReplacer(`\`, `\\`, `"`, `\"`).Replace(values[name])
-		fmt.Fprintf(&b, "%s=\"%s\"\n", name, v)
+		out = append(out, formatEnvLine(name, *changes[name]))
 	}
 
+	content := strings.Join(out, "\n")
+	if content != "" {
+		content += "\n"
+	}
 	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, []byte(b.String()), 0o600); err != nil {
+	if err := os.WriteFile(tmp, []byte(content), mode); err != nil {
 		return err
 	}
 	return os.Rename(tmp, path)
+}
+
+// migrateLegacySecrets folds dashden-secrets.env into .env and removes it.
+func migrateLegacySecrets(configPath string) error {
+	legacy := legacySecretsPath(configPath)
+	values, err := readManagedSecrets(legacy)
+	if err != nil || len(values) == 0 {
+		if err == nil {
+			os.Remove(legacy)
+		}
+		return err
+	}
+	changes := make(map[string]*string, len(values))
+	for name, v := range values {
+		changes[name] = &v
+	}
+	if err := updateEnvFile(managedSecretsPath(configPath), changes); err != nil {
+		return err
+	}
+	return os.Remove(legacy)
 }
 
 func validateSecret(name, value string) error {
@@ -98,40 +179,31 @@ func validateSecret(name, value string) error {
 // setManagedSecret saves the value, or removes the secret when value is nil,
 // and applies it to the running process.
 func setManagedSecret(configPath, name string, value *string) error {
+	if value != nil {
+		if err := validateSecret(name, *value); err != nil {
+			return err
+		}
+	}
+
 	managedSecretsMu.Lock()
 	defer managedSecretsMu.Unlock()
 
-	path := managedSecretsPath(configPath)
-	values, err := readManagedSecrets(path)
-	if err != nil {
+	if err := migrateLegacySecrets(configPath); err != nil {
+		return fmt.Errorf("moving saved secrets into .env: %w", err)
+	}
+	if err := updateEnvFile(managedSecretsPath(configPath), map[string]*string{name: value}); err != nil {
 		return err
 	}
-
 	if value == nil {
-		if _, ok := values[name]; !ok {
-			return nil
-		}
-		delete(values, name)
-		if err := writeManagedSecrets(path, values); err != nil {
-			return err
-		}
 		return os.Unsetenv(name)
-	}
-
-	if err := validateSecret(name, *value); err != nil {
-		return err
-	}
-	values[name] = *value
-	if err := writeManagedSecrets(path, values); err != nil {
-		return err
 	}
 	return os.Setenv(name, *value)
 }
 
 type secretStatus struct {
 	Name string `json:"name"`
-	// "settings" when saved from Settings, "environment" when it only comes from
-	// the container or --env-file, "missing" when the config uses it but it isn't set.
+	// "settings" when it is in config/.env (where Settings saves), "environment"
+	// when it only comes from the container or --env-file, "missing" when the config uses it but it isn't set.
 	Source     string `json:"source"`
 	UsedByConf bool   `json:"usedByConfig"`
 }
@@ -139,6 +211,12 @@ type secretStatus struct {
 func listSecretStatuses(configPath string, rawConfig []byte) ([]secretStatus, error) {
 	managedSecretsMu.Lock()
 	saved, err := readManagedSecrets(managedSecretsPath(configPath))
+	if legacy, lerr := readManagedSecrets(legacySecretsPath(configPath)); err == nil {
+		err = lerr
+		for k, v := range legacy {
+			saved[k] = v
+		}
+	}
 	managedSecretsMu.Unlock()
 	if err != nil {
 		return nil, err

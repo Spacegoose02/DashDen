@@ -24,7 +24,7 @@ New behaviour goes in **new files**. An upstream file only gets a short hook tha
 | Notice board | `widget-notice-board.go`, `notice-storage.go`, `templates/notice-board.html` | `configuration.md` |
 | Per-person to-do lists | hook in `widget-todo.go`, `dynacat.go` | `configuration.md` |
 | Kiosk mode for wall tablets | `static/js/kiosk.js` | `household.md` |
-| Docker image and upstream watch | `.github/workflows/upstream-watch.yml`, `docker-compose.dashden.yml` | `README.md` |
+| Docker image, Unraid template and compose, upstream watch | `.github/workflows/upstream-watch.yml`, `docker-compose.dashden.yml`, `unraid/` | `README.md` |
 
 Every Go file above has a `_test.go` next to it.
 
