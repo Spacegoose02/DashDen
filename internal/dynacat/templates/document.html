@@ -35,6 +35,7 @@
     (function() {
         try {
             pageData.serverTheme = pageData.theme;
+            /*{{ if .Request.ThemeFromProfile }}*/ return; /*{{ end }}*/
             var raw = localStorage.getItem("dynacat-theme");
             if (!raw) return;
             var stored = JSON.parse(raw);
