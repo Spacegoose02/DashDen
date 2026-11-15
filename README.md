@@ -1,5 +1,5 @@
-<p align="center"><img width="250px" src="docs/docs/logo.png"></p>
-<h1 align="center">Dynacat</h1>
+<p align="center"><img width="250px" src="docs/dashden-logo.png"></p>
+<h1 align="center">DashDen</h1>
 <p align="center">
   <a href="https://dynacat.artur.zone/configuration">Configuration</a> •
   <a href="https://discord.gg/mUqTzrfjFP">Discord</a> •
@@ -12,7 +12,7 @@
   <a href="https://dynacat.artur.zone/themes">Themes</a> 
 </p>
 
-<p align="center">Self-hosted dashboard built for people who want their information in one place.<br>Forked from Glance - it focuses on dynamic content updates and seamless integration with external applications.</p>
+<p align="center">Self-hosted dashboard built for people who want their information in one place.<br>DashDen is a personal fork of <a href="https://github.com/Panonim/dynacat">Dynacat</a> by Panonim, itself forked from Glance. It focuses on dynamic content updates and seamless integration with external applications.</p>
 
 ![](docs/docs/images/readme-main-image.png)
 
