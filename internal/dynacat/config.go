@@ -93,6 +93,10 @@ type config struct {
 		CenterDesktopNavigation      bool          `yaml:"center-desktop-navigation"`
 	} `yaml:"branding"`
 
+	Household struct {
+		Members map[string]*householdMember `yaml:"members"`
+	} `yaml:"household"`
+
 	Pages []page `yaml:"pages"`
 }
 
@@ -604,6 +608,10 @@ func isConfigStateValid(config *config) error {
 	}
 
 	if err := validateProxyAuthConfig(config); err != nil {
+		return err
+	}
+
+	if err := validateHousehold(config); err != nil {
 		return err
 	}
 
