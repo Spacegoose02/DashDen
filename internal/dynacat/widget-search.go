@@ -208,6 +208,10 @@ func (widget *searchWidget) collectBookmarks(app *application, pageFilter *page)
 		if pageFilter != nil && source != pageFilter {
 			continue
 		}
+		// Search results are shared, so widgets limited to some people stay out.
+		if _, limited := app.widgetAccessByID[id]; limited {
+			continue
+		}
 
 		for _, group := range bookmarks.Groups {
 			for _, link := range group.Links {
@@ -355,6 +359,9 @@ func (widget *searchWidget) collectLiveMatches() []searchTargetMatch {
 
 	app.searchTargets.each(func(id uint64, targets []searchTargetMatch) {
 		source := app.widgetToPage[id]
+		if _, limited := app.widgetAccessByID[id]; limited {
+			return
+		}
 
 		for _, target := range targets {
 			var include, crossPage bool

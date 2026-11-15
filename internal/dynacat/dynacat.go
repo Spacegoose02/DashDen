@@ -51,8 +51,10 @@ type application struct {
 	slugToPage    map[string]*page
 	widgetByID    map[uint64]widget
 	widgetByAPIID map[string]widget
-	widgetToPage  map[uint64]*page
-	searchTargets searchTargetRegistry
+	// rules from allowed-users/allowed-groups, inherited by a container's widgets
+	widgetAccessByID map[uint64]*widgetAccess
+	widgetToPage     map[uint64]*page
+	searchTargets    searchTargetRegistry
 
 	globalBackground string
 
@@ -99,6 +101,7 @@ func newApplication(c *config) (*application, error) {
 		Config:                 *c,
 		slugToPage:             make(map[string]*page),
 		widgetByID:             make(map[uint64]widget),
+		widgetAccessByID:       make(map[uint64]*widgetAccess),
 		widgetByAPIID:          make(map[string]widget),
 		apiRateRequests:        make(map[string]*apiRateWindow),
 		widgetToPage:           make(map[uint64]*page),
@@ -342,8 +345,14 @@ func newApplication(c *config) (*application, error) {
 			}
 		}
 
-		var registerWidget func(widget widget)
-		registerWidget = func(widget widget) {
+		var registerWidget func(widget widget, rules *widgetAccess)
+		registerWidget = func(widget widget, rules *widgetAccess) {
+			if own := widget.access(); own != nil {
+				rules = own
+			}
+			if rules != nil {
+				app.widgetAccessByID[widget.GetID()] = rules
+			}
 			app.widgetByID[widget.GetID()] = widget
 			app.widgetToPage[widget.GetID()] = page
 			if apiID := widget.GetAPIID(); apiID != "" {
@@ -354,17 +363,17 @@ func newApplication(c *config) (*application, error) {
 			switch v := widget.(type) {
 			case *groupWidget:
 				for i := range v.Widgets {
-					registerWidget(v.Widgets[i])
+					registerWidget(v.Widgets[i], rules)
 				}
 			case *splitColumnWidget:
 				for i := range v.Widgets {
-					registerWidget(v.Widgets[i])
+					registerWidget(v.Widgets[i], rules)
 				}
 			}
 		}
 
 		for i := range page.HeadWidgets {
-			registerWidget(page.HeadWidgets[i])
+			registerWidget(page.HeadWidgets[i], nil)
 		}
 		collectTodoListIDs(page.HeadWidgets)
 
@@ -376,7 +385,7 @@ func newApplication(c *config) (*application, error) {
 			}
 
 			for w := range column.Widgets {
-				registerWidget(column.Widgets[w])
+				registerWidget(column.Widgets[w], nil)
 			}
 			collectTodoListIDs(column.Widgets)
 		}
@@ -694,7 +703,9 @@ func (a *application) handlePageContentRequest(w http.ResponseWriter, r *http.Re
 	}
 
 	pageData := templateData{
-		Page: page,
+		Page:     page,
+		App:      a,
+		AuthUser: a.getAuthenticatedUser(w, r),
 	}
 
 	var err error
@@ -815,6 +826,11 @@ func (a *application) handleWidgetContentRequest(w http.ResponseWriter, r *http.
 		return
 	}
 
+	if !a.canUserSeeWidget(a.getAuthenticatedUser(w, r), widgetID) {
+		a.handleNotFound(w, r)
+		return
+	}
+
 	page.mu.Lock()
 	defer page.mu.Unlock()
 
@@ -849,6 +865,11 @@ func (a *application) handleWidgetActionRequest(w http.ResponseWriter, r *http.R
 	}
 
 	if a.handleAccessControl(w, r, page, showUnauthorizedJSON) {
+		return
+	}
+
+	if !a.canUserSeeWidget(a.getAuthenticatedUser(w, r), widgetID) {
+		a.handleNotFound(w, r)
 		return
 	}
 

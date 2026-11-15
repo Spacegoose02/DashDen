@@ -672,6 +672,10 @@ func isConfigStateValid(config *config) error {
 			return fmt.Errorf("page %d has allowed-users/allowed-groups but no auth method is configured", i+1)
 		}
 
+		if err := checkWidgetAccessNeedsAuth(page, hasAnyAuthMethod, i+1); err != nil {
+			return err
+		}
+
 		if page.Title == "" {
 			return fmt.Errorf("page %d has no name", i+1)
 		}

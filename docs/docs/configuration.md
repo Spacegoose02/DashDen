@@ -1418,6 +1418,7 @@ Examples:
 | ---- | ---- | -------- | ------- |
 | widget | string | yes | |
 | repo | string | no | main |
+| owner | string | no | Panonim |
 | url | string | no | |
 | headers | key (string) & value (string) | no | |
 | method | string | no | GET |
@@ -1447,6 +1448,16 @@ widget: daily-chess-puzzle
 repo: testing/main
 ```
 
+
+
+##### `owner`
+The GitHub owner of the dynawidgets repository to use, for a fork with your own widgets. Defaults to `Panonim`, or to the `DYNAWIDGETS_OWNER` environment variable when it's set. Example:
+
+```yaml
+- type: dynawidgets
+  widget: den-weather
+  owner: Spacegoose02
+```
 
 ##### `url`, `headers`, `method`, `body-type`, `body`, `frameless`, `allow-insecure`, `skip-json-validation`
 These properties work the same as in the [custom-api widget](#custom-api). They override the default values defined in the widget's template `required` section.
