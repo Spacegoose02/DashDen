@@ -71,6 +71,7 @@ type application struct {
 	oidcSessions *sessionStore
 
 	todoStorage      *todoStorage
+	userPrefs        *userPrefsStorage
 	todoListIDToPage map[string]*page
 
 	sseMu                sync.RWMutex
@@ -446,11 +447,20 @@ func newApplication(c *config) (*application, error) {
 	}
 	app.parsedManifest = []byte(manifest)
 
-	if len(app.todoListIDToPage) > 0 {
-		dbPath := config.Server.DBPath
-		if dbPath == "" {
-			dbPath = filepath.Join(config.assetsPath(), "dynacat.db")
+	dbPath := config.Server.DBPath
+	if dbPath == "" {
+		dbPath = filepath.Join(config.assetsPath(), "dynacat.db")
+	}
+
+	if app.AnyAuthEnabled() && !config.Theme.DisablePicker {
+		app.userPrefs = newUserPrefsStorage(dbPath)
+		if err := app.userPrefs.init(); err != nil {
+			slog.Error("Could not initialize user preferences, theme choices won't follow people between devices", "path", dbPath, "error", err)
+			app.userPrefs = nil
 		}
+	}
+
+	if len(app.todoListIDToPage) > 0 {
 		app.todoStorage = newTodoStorage(dbPath)
 
 		if err := app.todoStorage.init(); err != nil {
@@ -584,6 +594,9 @@ func (a *application) BackgroundFor(p *page) string {
 
 type templateRequestData struct {
 	Theme *themeProperties
+	// ThemeFromProfile is set when the theme came from the signed-in person's
+	// saved choice or household default, so the browser must not override it.
+	ThemeFromProfile bool
 }
 
 type templateData struct {
@@ -595,20 +608,24 @@ type templateData struct {
 	OIDCError       string
 }
 
-func (a *application) populateTemplateRequestData(data *templateRequestData, r *http.Request) {
-	theme := &a.Config.Theme.themeProperties
+func (a *application) populateTemplateRequestData(data *templateRequestData, r *http.Request, user *authenticatedUser) {
+	data.Theme = &a.Config.Theme.themeProperties
 
-	if !a.Config.Theme.DisablePicker {
-		selectedTheme, err := r.Cookie("theme")
-		if err == nil {
-			preset, exists := a.Config.Theme.Presets.Get(selectedTheme.Value)
-			if exists {
-				theme = preset
-			}
-		}
+	if a.Config.Theme.DisablePicker {
+		return
 	}
 
-	data.Theme = theme
+	if theme, ok := a.profileTheme(user); ok {
+		data.Theme = theme
+		data.ThemeFromProfile = true
+		return
+	}
+
+	if selectedTheme, err := r.Cookie("theme"); err == nil {
+		if preset, exists := a.Config.Theme.Presets.Get(selectedTheme.Value); exists {
+			data.Theme = preset
+		}
+	}
 }
 
 func (a *application) getAccessiblePages(user *authenticatedUser) []*page {
@@ -650,7 +667,7 @@ func (a *application) handlePageRequest(w http.ResponseWriter, r *http.Request) 
 		AuthUser:        user,
 		AccessiblePages: a.getAccessiblePages(user),
 	}
-	a.populateTemplateRequestData(&data.Request, r)
+	a.populateTemplateRequestData(&data.Request, r, user)
 
 	var responseBytes bytes.Buffer
 	err := pageTemplate.Execute(&responseBytes, data)

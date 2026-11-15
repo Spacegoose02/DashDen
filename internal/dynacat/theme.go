@@ -3,6 +3,7 @@ package dynacat
 import (
 	"fmt"
 	"html/template"
+	"log/slog"
 	"net/http"
 	"time"
 )
@@ -19,14 +20,16 @@ func (a *application) handleThemeChangeRequest(w http.ResponseWriter, r *http.Re
 
 	themeKey := r.PathValue("key")
 
-	properties, exists := a.Config.Theme.Presets.Get(themeKey)
-	if !exists && themeKey != "default" {
+	properties, exists := a.themeByKey(themeKey)
+	if !exists {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 
-	if themeKey == "default" {
-		properties = &a.Config.Theme.themeProperties
+	if user := a.getAuthenticatedUser(w, r); user != nil && a.userPrefs != nil {
+		if err := a.userPrefs.set(user.Username, userPrefTheme, themeKey); err != nil {
+			slog.Error("Saving theme choice failed", "username", user.Username, "error", err)
+		}
 	}
 
 	a.setCookie(w, r, &http.Cookie{
@@ -107,4 +110,37 @@ func (t1 *themeProperties) SameAs(t2 *themeProperties) bool {
 		return false
 	}
 	return true
+}
+
+func (a *application) themeByKey(key string) (*themeProperties, bool) {
+	if key == "default" {
+		return &a.Config.Theme.themeProperties, true
+	}
+	return a.Config.Theme.Presets.Get(key)
+}
+
+// profileTheme is the signed-in person's saved theme choice, or else their
+// household default. It wins over the browser's cookie so the theme follows
+// the person rather than the device.
+func (a *application) profileTheme(user *authenticatedUser) (*themeProperties, bool) {
+	if user == nil {
+		return nil, false
+	}
+
+	if a.userPrefs != nil {
+		key, ok, err := a.userPrefs.get(user.Username, userPrefTheme)
+		if err != nil {
+			slog.Error("Loading theme choice failed", "username", user.Username, "error", err)
+		} else if ok {
+			if theme, exists := a.themeByKey(key); exists {
+				return theme, true
+			}
+		}
+	}
+
+	if m := user.Member(); m != nil && m.Theme != "" {
+		return a.themeByKey(m.Theme)
+	}
+
+	return nil, false
 }

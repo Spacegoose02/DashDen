@@ -584,7 +584,7 @@ func (a *application) handleLoginPageRequest(w http.ResponseWriter, r *http.Requ
 		App:       a,
 		OIDCError: oidcError,
 	}
-	a.populateTemplateRequestData(&data.Request, r)
+	a.populateTemplateRequestData(&data.Request, r, nil)
 
 	var responseBytes bytes.Buffer
 	err := loginPageTemplate.Execute(&responseBytes, data)
