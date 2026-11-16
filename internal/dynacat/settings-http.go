@@ -39,6 +39,7 @@ func (a *application) registerSettingsRoutes(mux *http.ServeMux) {
 		mux.HandleFunc("POST /settings/recover", a.handleRecoveryPage)
 	}
 	a.registerSettingsPeopleRoutes(mux)
+	a.registerSettingsOIDCRoutes(mux)
 	a.registerSettingsAppsRoutes(mux)
 	a.registerSettingsThemesRoutes(mux)
 	mux.HandleFunc("GET /api/settings/overview", a.settingsJSON(a.handleSettingsOverview))

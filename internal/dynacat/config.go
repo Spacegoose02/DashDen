@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -111,6 +112,15 @@ type oidcConfig struct {
 	GroupsClaim   string   `yaml:"groups-claim"`
 	AllowedGroups []string `yaml:"allowed-groups"`
 	AllowedUsers  []string `yaml:"allowed-users"`
+
+	// DashDen additions, all optional.
+	ButtonName string `yaml:"button-name"`
+	HideButton bool   `yaml:"hide-button"`
+	// nil keeps upstream's behaviour (anyone the provider signs in may enter).
+	// true also gives newcomers a household profile; false lets in only people
+	// who already have one.
+	CreateAccounts *bool  `yaml:"create-accounts"`
+	NewAccountRole string `yaml:"new-account-role"`
 }
 
 type user struct {
@@ -624,8 +634,8 @@ func isConfigStateValid(config *config) error {
 		if oidc.ClientSecret == "" {
 			return fmt.Errorf("oidc: client-secret is required")
 		}
-		if oidc.RedirectURL == "" {
-			return fmt.Errorf("oidc: redirect-url is required")
+		if oidc.NewAccountRole != "" && !slices.Contains(householdRoles, oidc.NewAccountRole) {
+			return fmt.Errorf("oidc: new-account-role must be one of %s", strings.Join(householdRoles, ", "))
 		}
 	}
 

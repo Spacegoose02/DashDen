@@ -69,6 +69,8 @@ type application struct {
 	oidcProvider *gooidc.Provider
 	oidcVerifier *gooidc.IDTokenVerifier
 	oauth2Config *oauth2.Config
+	oidcMu       sync.Mutex
+	oidcTriedAt  time.Time
 	oidcSessions *sessionStore
 
 	todoStorage      *todoStorage
@@ -166,13 +168,12 @@ func newApplication(c *config) (*application, error) {
 	}
 
 	if config.Auth.OIDC != nil {
-		provider, verifier, oauth2Cfg, err := initOIDCProvider(config.Auth.OIDC)
-		if err != nil {
-			return nil, fmt.Errorf("initializing OIDC: %v", err)
+		// The provider is looked up now, but a provider that's down (or a typo
+		// made in Settings) doesn't stop DashDen from starting; the sign-in
+		// button tries again and explains what went wrong.
+		if err := app.ensureOIDC(); err != nil {
+			slog.Warn("Sign-in provider isn't reachable yet, will retry when someone signs in", "issuer", config.Auth.OIDC.IssuerURL, "error", err)
 		}
-		app.oidcProvider = provider
-		app.oidcVerifier = verifier
-		app.oauth2Config = oauth2Cfg
 		app.oidcSessions = sharedOIDCSessions
 		app.OIDCEnabled = true
 	}
