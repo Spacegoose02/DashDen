@@ -213,3 +213,21 @@
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+
+.login-remember {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 1.5rem;
+    padding-inline: 0.2rem;
+    color: var(--color-text-base);
+    cursor: pointer;
+    user-select: none;
+}
+
+.login-remember input {
+    width: 1.6rem;
+    height: 1.6rem;
+    accent-color: var(--color-primary);
+    cursor: pointer;
+}

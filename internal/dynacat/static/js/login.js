@@ -17,6 +17,14 @@ const usernameInput = find("#username");
 const passwordInput = find("#password");
 const loginButton = find("#login-button");
 const toggleVisibilityButton = find("#toggle-password-visibility");
+const rememberInput = document.getElementById("remember");
+
+if (rememberInput) {
+    try { rememberInput.checked = localStorage.getItem("dashden-remember") === "1"; } catch (_) {}
+    rememberInput.addEventListener("change", () => {
+        try { localStorage.setItem("dashden-remember", rememberInput.checked ? "1" : "0"); } catch (_) {}
+    });
+}
 
 container.clearStyles("display");
 
@@ -106,7 +114,8 @@ if (usernameInput && passwordInput && loginButton) {
             },
             body: JSON.stringify({
                 username: usernameInput.value,
-                password: passwordInput.value
+                password: passwordInput.value,
+                remember: !!(rememberInput && rememberInput.checked)
             }),
         });
 

@@ -44,8 +44,8 @@ func watchEnvFile(configPath string, onChange func()) func() {
 	}
 
 	stop := make(chan struct{})
+	lastMod, lastSize := stat()
 	go func() {
-		lastMod, lastSize := stat()
 		ticker := time.NewTicker(2 * time.Second)
 		defer ticker.Stop()
 		for {
