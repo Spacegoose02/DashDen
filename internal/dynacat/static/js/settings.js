@@ -92,7 +92,8 @@ function openPersonForm(person) {
     f.hidden = false;
     f.reset();
     document.getElementById("person-form-title").textContent = person ? `Edit ${person.name || person.username}` : "Add a person";
-    f.username.readOnly = !!person;
+    f.dataset.original = person ? person.username : "";
+    document.getElementById("person-rename-note").hidden = !person;
     f.role.replaceChildren(...["", ...peopleData.roles].map((r) => option(r, roleLabels[r] || r)));
     f.home.replaceChildren(option("", "The first page"), ...peopleData.pages.map((p) => option(p.value, p.label)));
     f.theme.replaceChildren(option("", "Their own choice"), ...peopleData.themes.map((t) => option(t.value, t.label)));
@@ -117,16 +118,27 @@ document.getElementById("person-cancel").addEventListener("click", () => { perso
 personForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     const f = personForm;
+    const original = f.dataset.original;
     const username = f.username.value.trim();
+    const renaming = original && username !== original;
+    const taken = renaming && peopleData.people.find((p) => p.username !== original && p.username.toLowerCase() === username.toLowerCase());
+    if (taken) { notify(`Someone already has the username ${taken.username}.`, true); return; }
+    if (renaming && !confirm(`Change the username ${original} to ${username}?` + (original === peopleData.you ? " You'll stay signed in." : " They sign in with the new name from now on."))) return;
     const body = {
         name: f.name.value, avatar: f.avatar.value, role: f.role.value,
         home: f.home.value, theme: f.theme.value, groups: splitList(f.groups.value),
     };
     if (f.password.value) body.password = f.password.value;
     try {
-        await call("PUT", "/people/" + encodeURIComponent(username), body);
+        await call("PUT", "/people/" + encodeURIComponent(original || username), body);
+        let carried = true;
+        if (renaming) {
+            const result = await call("POST", "/people/" + encodeURIComponent(original) + "/rename", { newUsername: username });
+            carried = result.dataCarried !== false;
+        }
         f.hidden = true;
-        notify(`Saved ${body.name || username}, reloading…`);
+        if (!carried) notify("Renamed, but their saved theme, notes or to-dos couldn't be moved. The server log has the details.", true);
+        else notify(renaming ? `Renamed ${original} to ${username}, reloading…` : `Saved ${body.name || username}, reloading…`);
         await waitForConfigReload();
         loadPeople();
     } catch (e) {
