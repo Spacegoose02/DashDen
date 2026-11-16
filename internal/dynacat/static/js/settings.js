@@ -765,13 +765,59 @@ serverForm.addEventListener("submit", async (event) => {
     }
 });
 
+function renderHealth(o) {
+    const card = document.getElementById("health-card");
+    const body = document.getElementById("health-body");
+    const h = o.health || { warnings: [], widgets: [] };
+    const sections = [];
+
+    if (o.configError) {
+        sections.push(["Your latest config change wasn't applied. DashDen is still running the version before it.", [o.configError], "color-negative"]);
+    }
+    if (h.warnings.length) {
+        sections.push([`${h.warnings.length} setting${h.warnings.length === 1 ? " is" : "s are"} ignored because DashDen doesn't recognise ${h.warnings.length === 1 ? "it" : "them"}:`, h.warnings]);
+    }
+    if (h.widgets.length) {
+        sections.push([`${h.widgets.length} widget${h.widgets.length === 1 ? "" : "s"} couldn't load ${h.widgets.length === 1 ? "its" : "their"} data last time:`,
+            h.widgets.map(w => `${w.title || w.type} (${w.type}): ${w.error}`)]);
+    }
+    if (o.missingSecrets) {
+        sections.push([`${o.missingSecrets} secret${o.missingSecrets === 1 ? " is" : "s are"} used by the config but not set. See the Secrets tab.`, []]);
+    }
+
+    body.replaceChildren();
+    card.hidden = false;
+    if (!sections.length) {
+        const p = document.createElement("p");
+        p.className = "color-positive";
+        p.textContent = "Everything loads and every setting is recognised.";
+        body.append(p);
+        return;
+    }
+    for (const [title, items, cls] of sections) {
+        const p = document.createElement("p");
+        p.textContent = title;
+        if (cls) p.className = cls;
+        body.append(p);
+        if (!items.length) continue;
+        const ul = document.createElement("ul");
+        ul.className = "settings-health-list";
+        for (const item of items) {
+            const li = document.createElement("li");
+            li.textContent = item;
+            ul.append(li);
+        }
+        body.append(ul);
+    }
+}
+
 async function loadOverview() {
     const facts = document.getElementById("overview-facts");
     try {
         const o = await call("GET", "/overview");
         renderSetup(o);
+        renderHealth(o);
         const rows = [
-            ...(o.configError ? [["Config problem", "Your latest change wasn't applied, DashDen is still running the one before it: " + o.configError]] : []),
             ["Sign-in", o.signIn.length ? o.signIn.join(", ") : "None, anyone who can reach DashDen can see it"],
             ["Household", o.members ? `${o.members} people, admins: ${o.admins.length ? o.admins.join(", ") : "none yet"}` : "No household profiles yet"],
             ["Pages", String(o.pages)],
