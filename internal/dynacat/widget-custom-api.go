@@ -249,6 +249,8 @@ func (data *customAPITemplateData) JSONLines() []decoratedGJSONResult {
 	return result
 }
 
+// Subrequest returns the named subrequest's response, or nil when that request failed
+// (timed out, refused, unreadable), so templates can guard with {{ if $s }}.
 func (data *customAPITemplateData) Subrequest(key string) *customAPIResponseData {
 	req, exists := data.subrequests[key]
 	if !exists {
@@ -347,13 +349,16 @@ func fetchAndRenderCustomAPIRequest(
 				var localErr error
 				var data *customAPIResponseData
 				data, localErr = fetchCustomAPIResponse(ctx, req)
-				mu.Lock()
-				if localErr == nil {
-					subData[key] = data
-				} else if err == nil {
-					err = localErr
-					cancel()
+				if localErr != nil {
+					// A failed subrequest doesn't sink the widget: the template gets nil from
+					// .Subrequest and can skip that part. Only the primary request is required.
+					if ctx.Err() == nil {
+						slog.Warn("Custom API subrequest failed", "key", key, "url", req.URL, "error", localErr)
+					}
+					data = nil
 				}
+				mu.Lock()
+				subData[key] = data
 				mu.Unlock()
 			}()
 		}
