@@ -653,3 +653,29 @@ func (a *application) handleSettingsAccessSave(w http.ResponseWriter, r *http.Re
 	slog.Info("Page access saved from Settings", "page", p.Title)
 	writeJSON(w, http.StatusOK, map[string]any{"saved": p.Title})
 }
+
+// addHouseholdMemberFromSignIn gives someone a profile the first time they
+// sign in through a provider that is set to create accounts.
+func (a *application) addHouseholdMemberFromSignIn(username, name string) error {
+	if a.configPath == "" {
+		return errors.New("no config file to write to")
+	}
+	role := a.Config.Auth.OIDC.NewAccountRole
+	if role == "" {
+		role = householdRoleAdult
+	}
+	return a.changeConfig(func(root *yaml.Node) error {
+		members, err := editableSection(root, "household", "members")
+		if err != nil {
+			return err
+		}
+		if getMappingValue(members, username) != nil {
+			return nil
+		}
+		member := newMappingNode()
+		setOrRemove(member, "name", strings.TrimSpace(name))
+		setMappingKey(member, "role", scalarNode(role))
+		setMappingKey(members, username, member)
+		return nil
+	})
+}

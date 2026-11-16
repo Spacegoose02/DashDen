@@ -83,6 +83,32 @@
                     <button type="submit" class="settings-button">Save sign-in</button>
                 </div>
             </form>
+
+            <h2 class="settings-card-title color-highlight settings-card">Sign-in button (OIDC)</h2>
+            <p class="settings-note">A button on DashDen's sign-in page that sends people to your own sign-in service, such as Tinyauth, Authelia or Pocket ID, and back.</p>
+            <div id="oidc-summary"></div>
+            <form class="settings-card" id="oidc-form" hidden autocomplete="off">
+                <h2 class="settings-card-title color-highlight" id="oidc-form-title">Add a sign-in button</h2>
+                <div class="settings-fields">
+                    <label class="settings-wide">Name on the sign-in button<input class="settings-input" name="buttonName" placeholder="Tinyauth"></label>
+                    <label class="settings-wide">Issuer URL<input class="settings-input settings-mono" name="issuerURL" type="url" required placeholder="https://auth.example.com"></label>
+                    <label class="settings-wide">Client ID<input class="settings-input settings-mono" name="clientID" required></label>
+                    <label class="settings-wide">Client secret<input class="settings-input settings-mono" name="clientSecret" type="password" autocomplete="new-password"></label>
+                    <label class="settings-wide">Extra scopes (optional)<input class="settings-input settings-mono" name="extraScopes" placeholder="openid, profile and email are always asked for"></label>
+                </div>
+                <p class="settings-note settings-gap-top">Callback URL to give your provider: <code class="settings-mono" id="oidc-callback"></code></p>
+                <label class="settings-check settings-gap-top"><input type="checkbox" name="createAccounts"> Create a profile for anyone who signs in with it</label>
+                <p class="settings-note color-subdue">Only turn this on for a provider that just lets in people you trust, like your own Tinyauth. Turned off, only people who already have a profile under People can get in.</p>
+                <div class="settings-fields" id="oidc-role-field">
+                    <label>New profiles start as<select class="settings-input" name="newAccountRole"></select></label>
+                </div>
+                <label class="settings-check settings-gap-top"><input type="checkbox" name="showOnLogin" checked> Show on the sign-in page</label>
+                <div class="settings-actions settings-gap-top">
+                    <button type="button" class="settings-button settings-button-small" id="oidc-test">Test</button>
+                    <button type="button" class="settings-button settings-button-small" id="oidc-cancel">Cancel</button>
+                    <button type="submit" class="settings-button">Save</button>
+                </div>
+            </form>
         </section>
 
         <section class="settings-panel widget-content-frame" data-panel="access" hidden>

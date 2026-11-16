@@ -543,11 +543,11 @@ func (a *application) handleLogoutRequest(w http.ResponseWriter, r *http.Request
 	}
 
 	loggedOutURL := a.Config.Server.BaseURL + "/login?logged-out=1"
-	http.Redirect(w, r, orDefault(a.oidcProviderLogoutURL(session, loggedOutURL), loggedOutURL), http.StatusSeeOther)
+	http.Redirect(w, r, orDefault(a.oidcProviderLogoutURL(r, session, loggedOutURL), loggedOutURL), http.StatusSeeOther)
 }
 
 // Ends the session at the provider too, otherwise auto-redirect-oidc would sign the user straight back in.
-func (a *application) oidcProviderLogoutURL(session *oidcSession, loggedOutPath string) string {
+func (a *application) oidcProviderLogoutURL(r *http.Request, session *oidcSession, loggedOutPath string) string {
 	if session == nil || session.Token == nil {
 		return ""
 	}
@@ -556,6 +556,9 @@ func (a *application) oidcProviderLogoutURL(session *oidcSession, loggedOutPath 
 		EndSessionEndpoint string `json:"end_session_endpoint"`
 	}
 
+	if a.oidcProvider == nil {
+		return ""
+	}
 	if err := a.oidcProvider.Claims(&discovery); err != nil || discovery.EndSessionEndpoint == "" {
 		return ""
 	}
@@ -565,7 +568,7 @@ func (a *application) oidcProviderLogoutURL(session *oidcSession, loggedOutPath 
 		return ""
 	}
 
-	redirectURL, err := url.Parse(a.Config.Auth.OIDC.RedirectURL)
+	redirectURL, err := url.Parse(a.oidcCallbackURL(r))
 	if err != nil {
 		return ""
 	}
