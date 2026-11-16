@@ -1,0 +1,3 @@
+#!/bin/sh
+# Lets `docker exec dashden dashden check` find the config without flags.
+exec /app/dynacat --config "${DASHDEN_CONFIG:-/app/config/dynacat.yml}" "$@"

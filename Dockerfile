@@ -25,6 +25,7 @@ RUN apk add --no-cache zfs su-exec
 WORKDIR /app
 COPY --from=builder /app/dynacat .
 COPY --chmod=755 docker/entrypoint.sh /app/entrypoint.sh
+COPY --chmod=755 docker/dashden /usr/local/bin/dashden
 RUN mkdir -p /app/config
 
 EXPOSE 8080/tcp

@@ -25,7 +25,7 @@ import (
 )
 
 var (
-	pageTemplate        = mustParseTemplate("page.html", "document.html", "footer.html")
+	pageTemplate        = mustParseTemplate("page.html", "document.html", "footer.html", "config-problems.html")
 	pageContentTemplate = mustParseTemplate("page-content.html")
 	manifestTemplate    = mustParseTemplate("manifest.json")
 )

@@ -42,6 +42,7 @@ dockers:
     dockerfile: Dockerfile.goreleaser
     extra_files:
       - docker/entrypoint.sh
+      - docker/dashden
 
   - image_templates:
       - &arm64v8_image "{{ .ProjectName }}:{{ .Tag }}-arm64"
@@ -52,6 +53,7 @@ dockers:
     dockerfile: Dockerfile.goreleaser
     extra_files:
       - docker/entrypoint.sh
+      - docker/dashden
 
   - image_templates:
       - &armv7_image "{{ .ProjectName }}:{{ .Tag }}-armv7"
@@ -63,6 +65,7 @@ dockers:
     dockerfile: Dockerfile.goreleaser
     extra_files:
       - docker/entrypoint.sh
+      - docker/dashden
 
 docker_manifests:
   - name_template: "{{ .ProjectName }}:{{ .Tag }}"

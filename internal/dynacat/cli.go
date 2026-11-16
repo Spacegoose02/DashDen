@@ -51,7 +51,7 @@ func parseCliOptions() (*cliOptions, error) {
 		flags.PrintDefaults()
 
 		fmt.Println("\nCommands:")
-		fmt.Println("  config:validate       Validate the config file")
+		fmt.Println("  check                 List every problem in the config (also config:validate)")
 		fmt.Println("  config:print          Print the parsed config file with embedded includes")
 		fmt.Println("  password:hash <pwd>   Hash a password")
 		fmt.Println("  secret:make           Generate a random secret key")
@@ -78,7 +78,7 @@ func parseCliOptions() (*cliOptions, error) {
 		intent = cliIntentServe
 	case 1:
 		switch args[0] {
-		case "config:validate":
+		case "check", "config:validate", "config:check":
 			intent = cliIntentConfigValidate
 		case "config:print":
 			intent = cliIntentConfigPrint
