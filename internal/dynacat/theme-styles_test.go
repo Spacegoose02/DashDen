@@ -73,3 +73,43 @@ func TestThemeNameFromKey(t *testing.T) {
 		t.Fatal(got)
 	}
 }
+
+func TestKidsStartOnAKidTheme(t *testing.T) {
+	a := &application{}
+	a.Config.Theme.Presets = *withBuiltinThemes(&orderedYAMLMap[string, *themeProperties]{data: map[string]*themeProperties{}})
+
+	kid := &authenticatedUser{Username: "sam", member: &householdMember{Role: householdRoleKid}}
+	theme, ok := a.profileTheme(kid)
+	if !ok || theme.Name != "Playroom" {
+		t.Fatalf("kid got %+v", theme)
+	}
+
+	chosen := &authenticatedUser{Username: "ava", member: &householdMember{Role: householdRoleKid, Theme: "dino"}}
+	if theme, _ := a.profileTheme(chosen); theme == nil || theme.Name != "Dino" {
+		t.Fatal("a kid's own household theme should win")
+	}
+
+	adult := &authenticatedUser{Username: "mum", member: &householdMember{Role: householdRoleAdult}}
+	if _, ok := a.profileTheme(adult); ok {
+		t.Fatal("adults keep their browser's theme")
+	}
+}
+
+func TestHouseholdCanUseBuiltinThemes(t *testing.T) {
+	_, err := newConfigFromYAML([]byte(`
+household:
+  members:
+    sam:
+      role: kid
+      theme: under-the-sea
+pages:
+  - name: Home
+    columns:
+      - size: full
+        widgets:
+          - type: clock
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+}

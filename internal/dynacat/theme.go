@@ -159,5 +159,12 @@ func (a *application) profileTheme(user *authenticatedUser) (*themeProperties, b
 		return a.themeByKey(m.Theme)
 	}
 
+	// DashDen: kids start on a kid theme.
+	if m := user.Member(); m != nil && m.Role == householdRoleKid {
+		if theme, ok := a.themeByKey(kidsDefaultTheme); ok {
+			return theme, true
+		}
+	}
+
 	return nil, false
 }

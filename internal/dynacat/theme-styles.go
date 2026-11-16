@@ -268,3 +268,16 @@ func themeNameFromKey(key string) string {
 	}
 	return strings.ToUpper(name[:1]) + name[1:]
 }
+
+func isBuiltinThemeKey(key string) bool {
+	for _, b := range builtinThemes {
+		if b.key == key {
+			return true
+		}
+	}
+	return false
+}
+
+// kidsDefaultTheme is where kids start when their household entry names no
+// theme: big, round and bright. They can still pick another.
+const kidsDefaultTheme = "playroom"
