@@ -7,6 +7,8 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -32,6 +34,7 @@ type videosWidget struct {
 	Playlists         []string             `yaml:"playlists"`
 	Limit             int                  `yaml:"limit"`
 	IncludeShorts     bool                 `yaml:"include-shorts"`
+	APIKey            string               `yaml:"api-key"`
 	videoCache        map[string]videoList `yaml:"-"`
 }
 
@@ -41,6 +44,11 @@ func (widget *videosWidget) initialize() error {
 	if widget.UpdateInterval == nil {
 		interval := updateIntervalField(1 * time.Hour)
 		widget.UpdateInterval = &interval
+	}
+
+	// DashDen: one YOUTUBE_API_KEY covers every videos widget.
+	if widget.APIKey == "" {
+		widget.APIKey = strings.TrimSpace(os.Getenv("YOUTUBE_API_KEY"))
 	}
 
 	if widget.Limit <= 0 {
@@ -68,11 +76,14 @@ func (widget *videosWidget) initialize() error {
 }
 
 func (widget *videosWidget) update(ctx context.Context) {
+	cacheDir := widget.youtubeCacheDir()
 	if widget.videoCache == nil {
 		widget.videoCache = make(map[string]videoList)
+		loadYoutubeCache(cacheDir, widget.Channels, widget.videoCache)
 	}
 
-	videos, err := fetchYoutubeChannelUploads(ctx, widget.Channels, widget.VideoUrlTemplate, widget.IncludeShorts, widget.videoCache)
+	videos, err := fetchYoutubeVideos(ctx, widget.APIKey, widget.Channels, widget.VideoUrlTemplate, widget.IncludeShorts, widget.videoCache)
+	saveYoutubeCache(cacheDir, widget.Channels, widget.videoCache)
 
 	if !widget.canContinueUpdateAfterHandlingErr(err) {
 		return
@@ -92,6 +103,13 @@ func (widget *videosWidget) update(ctx context.Context) {
 	}
 
 	widget.Videos = videos
+}
+
+func (widget *videosWidget) youtubeCacheDir() string {
+	if widget.Providers == nil || widget.Providers.app == nil || widget.Providers.app.configPath == "" {
+		return ""
+	}
+	return filepath.Join(filepath.Dir(widget.Providers.app.configPath), youtubeCacheDirName)
 }
 
 func (widget *videosWidget) Render() template.HTML {

@@ -14,6 +14,8 @@ func TestFriendlyWidgetError(t *testing.T) {
 		`unexpected status code 401 from https://x`:                                "The service refused the request. Check the API key or token.",
 		`expected status code 200, got 404`:                                        "The service says this address doesn't exist (404).",
 		`docker API returned status 403`:                                           "The service refused the request. Check the API key or token.",
+		`401 Unauthorized`:                                                         "The service refused the request. Check the API key or token.",
+		`502 Bad Gateway`:                                                          "The service returned an error.",
 		`something else entirely`:                                                  "This widget couldn't load.",
 	}
 	for in, want := range cases {
