@@ -1950,7 +1950,7 @@ Example:
   app: dendrop
   url: https://chat.example.com
   token: ${DENDROP_BOT_TOKEN}
-  channel: ${DENDROP_FAMILY_CHANNEL}
+  channel: general
   messages: ["Dinner's ready! 🍽️", "Shoes on, we're leaving", "Bedtime in 10 minutes"]
 ```
 
@@ -1978,7 +1978,7 @@ For Den Duty, create a token with "read and control" access so the buttons work.
 `parent-duty` (Den Duty) or `low` (Nighttime Ninja). Leave it out for the usual view.
 
 ##### `channel` and `messages`
-Dendrop only. The bot token is sent as `Bot <token>`, and the bot must be a member of the channel. A button can only send a message from this list.
+Dendrop only. `channel` is the channel's name, like `general` (Dendrop doesn't show channel numbers). If two of the bot's servers have a channel with that name, write `Family/general`. A channel number also works. The bot token is sent as `Bot <token>`, and the bot must be a member of the server. A button can only send a message from this list.
 
 ##### `kid`
 Den Duty only. Show just this kid's chores, for example on a kid's own home page.
