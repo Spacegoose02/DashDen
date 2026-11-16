@@ -36,6 +36,7 @@ New behaviour goes in **new files**. An upstream file only gets a short hook tha
 | Installable app that opens the last-seen pages offline | `pwa.go`, `static/pwa/sw.js`, `static/js/pwa.js` | |
 | Live updates: notice boards, den apps, shared to-do lists and config changes reach every open screen | `live-updates.go` | |
 | Shared database waits instead of failing with "database is locked" | `sqlite-open.go` | |
+| Undo in the editor right after a change | `editor-undo.go` | |
 | Docker image, Unraid template and compose, upstream watch | `.github/workflows/upstream-watch.yml`, `docker-compose.dashden.yml`, `unraid/` | `README.md` |
 
 Every Go file above has a `_test.go` next to it.
@@ -56,7 +57,7 @@ These are where upstream merges can conflict. Paths are under `internal/dynacat/
 | `api.go` | `apiPageWidgetViews` takes the user and drops widgets they can't see | Keep the `user` parameter |
 | `sse.go` | Broadcasts carry the widget ID so limited widgets aren't sent to others; `sseHello` greets each connection with the server start time | Keep the widget ID argument and the hello |
 | `config-editor.go` | `unescapeEmoji` when writing YAML so emoji stay readable | Keep the call in `marshalDocument` |
-| `editor-http.go` | Dynawidgets `owner` query parameter | Small |
+| `editor-http.go` | Dynawidgets `owner` query parameter; a save answers with `X-DashDen-Undo` | Small |
 | `widget-dynawidgets.go` | `owner` option and `DYNAWIDGETS_OWNER`, repo keys as `owner~branch` | Re-apply if upstream reworks repo keys |
 | `widget.go` | `case` lines for `den-app`, `den-now`, `notice-board`; `widgetAccess` inline in `widgetBase` | Small |
 | `widget-container.go` | `checkNestedWidgetAccess` for groups and split columns | Small |
@@ -67,7 +68,7 @@ These are where upstream merges can conflict. Paths are under `internal/dynacat/
 | `templates/footer.html`, `templates/widget-base.html`, `templates/first-run-setup.html` | DashDen name and links | Keep ours |
 | `dynacat.go` (defaults) | Default app name, favicon and app icon are DashDen's | Keep ours |
 | `dynacat.go` (pages) | `handlePageContentRequest` uses `updateWidgetsWithin` and unlocks the page when updates finish; `handleWidgetContentRequest` skips the update for a widget that just finished as a placeholder; `templateData.lateWidgets`; `pageUsage.setPath` and `pageUsage.record` | Re-apply if upstream changes page rendering |
-| `dynacat.go` (live updates) | `handleWidgetActionRequest` records the status and calls `pushAfterWidgetAction`; `handleTodoSave` calls `pushTodoChange`; the `/sw.js` route via `registerPWARoutes` | Three calls |
+| `dynacat.go` (live updates) | `handleWidgetActionRequest` records the status and calls `pushAfterWidgetAction`; `handleTodoSave` calls `pushTodoChange`; the `/sw.js` route via `registerPWARoutes`; the `POST /api/editor/undo` route | Four lines |
 | `notice-storage.go`, `todo-storage.go`, `user-prefs.go` | Open the database with `openSQLite` | One call each |
 | `static/js/todo.js` | Sends `X-DashDen-Tab` when saving and reloads the list on `dashden:todo-changed` | Re-apply if upstream rewrites server storage |
 | `config-fields.go` | `customIconField.cacheURL` calls `cachedIconURL` instead of downloading | One call |
@@ -78,7 +79,7 @@ These are where upstream merges can conflict. Paths are under `internal/dynacat/
 | `templates/page-content.html` | `$.CanSeeWidget` check around each widget | Keep the check, or limited widgets leak |
 | `templates/document.html` | One line so a theme chosen on the profile wins over the browser's saved theme; `appStarted` in `pageData` | Small |
 | `static/js/page.js` | Exposes `dynacatSetupDynamicRelativeTime` on `window`; the SSE handler passes to-do changes on and reloads after a config change | Small |
-| `static/js/editor.js` | Live theme preview in the styling modal, dynawidgets owner | Re-apply if upstream rewrites the modal |
+| `static/js/editor.js` | Live theme preview in the styling modal, dynawidgets owner, `offerUndo` after a save | Re-apply if upstream rewrites the modal |
 | `static/css/site.css` | Kiosk styles at the end | Append-only |
 | `static/css/main.css` | Imports `config-problems.css` and `dashden.css` | Two lines |
 | `static/css/widgets.css` | Imports `widget-den-app.css` | One line |

@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 )
 
 const (
@@ -77,6 +78,7 @@ func (a *application) handleEditorConfigSave(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	saveStarted := time.Now() // DashDen: undo
 	if err := a.applyEditorMutation(user, mutation); err != nil {
 		out := editorErrorBody{Error: err.Error(), Context: mutationContext(mutation)}
 		status := http.StatusBadRequest
@@ -101,6 +103,10 @@ func (a *application) handleEditorConfigSave(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	// DashDen: tell the editor which history entry this save made, for Undo.
+	if id := a.offerEditorUndo(user, saveStarted); id != "" {
+		w.Header().Set("X-DashDen-Undo", id)
+	}
 	w.WriteHeader(http.StatusNoContent)
 }
 
