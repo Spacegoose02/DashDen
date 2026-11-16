@@ -52,7 +52,8 @@ func newDenMock(t *testing.T) (*denMock, *httptest.Server) {
 			}})
 		case "GET /api/admin/activity":
 			json.NewEncoder(w).Encode(map[string]any{"nowPlaying": []map[string]any{
-				{"title": "Bluey", "subtitle": "S1E1", "name": "Mia", "client": "Living room TV", "position": 1, "duration": 2, "paused": true},
+				{"title": "Bluey", "subtitle": "S1E1", "name": "Mia", "client": "Living room TV", "position": 1, "duration": 2, "paused": true,
+					"itemId": 42, "poster": "/api/images/tmdb/bluey.jpg"},
 			}})
 		case "GET /api/family/now-playing":
 			json.NewEncoder(w).Encode([]map[string]any{
@@ -244,6 +245,9 @@ func TestDenNow(t *testing.T) {
 		if it.Title == "Kart" && (it.ImageURL != srv.URL+"/covers/kart.jpg" || it.Subtitle != "25 min of screen time left") {
 			t.Fatalf("lootden item: %+v", it)
 		}
+	}
+	if bluey := w.Items[2]; bluey.ImageURL != srv.URL+"/api/images/tmdb/bluey.jpg?token=tok&w=w185" || bluey.Link != srv.URL+"/item/42" {
+		t.Fatalf("bingebandit poster and link: %+v", bluey)
 	}
 	if len(w.Failed) != 1 || w.Failed[0] != "Broken" {
 		t.Fatalf("failed: %v", w.Failed)

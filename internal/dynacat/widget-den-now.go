@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"net/url"
 	"slices"
 	"strings"
 	"sync"
@@ -174,6 +175,8 @@ func (s denNowSource) fetch(ctx context.Context) ([]denNowItem, error) {
 				Position float64 `json:"position"`
 				Duration float64 `json:"duration"`
 				Paused   bool    `json:"paused"`
+				Poster   string  `json:"poster"`
+				ItemID   int64   `json:"itemId"`
 			} `json:"nowPlaying"`
 		}](s.client(), req)
 		if err != nil {
@@ -184,7 +187,7 @@ func (s denNowSource) fetch(ctx context.Context) ([]denNowItem, error) {
 			items = append(items, denNowItem{
 				Kind: "watching", Who: p.Name, Title: p.Title, Subtitle: p.Subtitle,
 				Where: p.Client, Paused: p.Paused, Percent: percentOf(p.Position, p.Duration),
-				Link: s.URL, Source: s.Name,
+				ImageURL: s.bingeBanditPoster(p.Poster), Link: s.bingeBanditItem(p.ItemID), Source: s.Name,
 			})
 		}
 		return items, nil
@@ -241,6 +244,33 @@ func (s denNowSource) fetch(ctx context.Context) ([]denNowItem, error) {
 		return items, nil
 	}
 	return nil, errors.New("unknown app")
+}
+
+// bingeBanditPoster turns a now-playing poster path into a URL DashDen can
+// fetch. BingeBandit's images need sign-in and an <img> can't send a header,
+// so the key goes in ?token=. The URL only ever goes to DashDen's image cache,
+// which serves its own copy, so the key doesn't reach the browser.
+func (s denNowSource) bingeBanditPoster(poster string) string {
+	u := s.absolute(poster)
+	if u == "" {
+		return ""
+	}
+	parsed, err := url.Parse(u)
+	if err != nil {
+		return ""
+	}
+	q := parsed.Query()
+	q.Set("w", "w185")
+	q.Set("token", s.Token)
+	parsed.RawQuery = q.Encode()
+	return parsed.String()
+}
+
+func (s denNowSource) bingeBanditItem(id int64) string {
+	if id <= 0 {
+		return s.URL
+	}
+	return fmt.Sprintf("%s/item/%d", s.URL, id)
 }
 
 func (s denNowSource) absolute(u string) string {
