@@ -14,6 +14,10 @@ This tab covers the sign-in methods in use, the household, the number of pages, 
 
 Until the basics are done, the Overview tab starts with a short checklist: make yourself a household admin (one click if you're signed in and not in the household yet), set up sign-in, connect your apps, and fill in any missing secrets. It disappears once everything is ticked.
 
+**Config health** lists settings DashDen ignores (with file, line and what you probably meant), widgets whose last update failed, a config change that didn't load, and secrets that aren't set.
+
+**Page use** counts how often each page is opened (not by whom) and when it was last opened. Pages nobody has opened in 30 days are marked as candidates to remove.
+
 ## People
 
 Add, edit and remove [household](household.md) members: username, name, avatar (an emoji, initials or an image URL), role, home page, theme and extra groups. The username has to match what the person signs in with.
