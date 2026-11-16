@@ -96,7 +96,6 @@ function openPersonForm(person) {
     f.role.replaceChildren(...["", ...peopleData.roles].map((r) => option(r, roleLabels[r] || r)));
     f.home.replaceChildren(option("", "The first page"), ...peopleData.pages.map((p) => option(p.value, p.label)));
     f.theme.replaceChildren(option("", "Their own choice"), ...peopleData.themes.map((t) => option(t.value, t.label)));
-    document.getElementById("person-password-field").hidden = !peopleData.passwordSignIn;
     if (person) {
         f.username.value = person.username;
         f.name.value = person.name || "";
@@ -249,6 +248,104 @@ signinForm.addEventListener("submit", async (event) => {
         notify("Saved sign-in, reloading…");
         await waitForConfigReload();
         loadSignIn();
+    } catch (e) {
+        notify(e.message, true);
+    }
+});
+
+const oidcForm = document.getElementById("oidc-form");
+let oidcData;
+
+function syncOIDCFields() {
+    document.getElementById("oidc-role-field").hidden = !oidcForm.createAccounts.checked;
+}
+oidcForm.createAccounts.addEventListener("change", syncOIDCFields);
+
+function openOIDCForm() {
+    const o = oidcData.oidc, f = oidcForm;
+    f.hidden = false;
+    document.getElementById("oidc-form-title").textContent = o.enabled ? `Edit ${o.buttonName || "sign-in button"}` : "Add a sign-in button";
+    f.buttonName.value = o.buttonName || "";
+    f.issuerURL.value = o.issuerURL || "";
+    f.clientID.value = o.clientID || "";
+    f.clientSecret.value = "";
+    f.clientSecret.placeholder = o.secretSaved ? "Saved; leave empty to keep it" : "From your provider";
+    f.clientSecret.required = !o.secretSaved;
+    f.extraScopes.value = joinList(o.extraScopes);
+    f.createAccounts.checked = o.createAccounts;
+    f.newAccountRole.replaceChildren(...oidcData.roles.map((r) => option(r, roleLabels[r] || r)));
+    f.newAccountRole.value = o.newAccountRole;
+    f.showOnLogin.checked = o.showOnLogin;
+    document.getElementById("oidc-callback").textContent = o.callbackURL;
+    syncOIDCFields();
+    f.scrollIntoView({ behavior: "smooth", block: "start" });
+    f.buttonName.focus();
+}
+
+async function loadOIDC() {
+    const box = document.getElementById("oidc-summary");
+    try {
+        oidcData = await call("GET", "/oidc");
+        const o = oidcData.oidc;
+        box.replaceChildren();
+        const p = document.createElement("p");
+        p.className = "settings-note";
+        if (o.enabled) {
+            p.textContent = `${o.buttonName || "Sign-in button"} at ${o.issuerURL}` +
+                (o.reachable === false ? ", which can't be reached right now." : ".") +
+                (o.showOnLogin ? "" : " Hidden on the sign-in page.") +
+                (o.createAccounts ? " Creates profiles for newcomers." : "");
+            if (o.reachable === false) p.classList.add("color-negative");
+        } else {
+            p.textContent = "None yet.";
+        }
+        const actions = document.createElement("div");
+        actions.className = "settings-actions";
+        actions.append(button(o.enabled ? "Edit" : "Add a sign-in button", openOIDCForm));
+        if (o.enabled) {
+            actions.append(button("Remove", async () => {
+                if (!confirm(`Remove the ${o.buttonName || "sign-in"} button?`)) return;
+                try {
+                    await call("DELETE", "/oidc");
+                    notify("Removed, reloading…");
+                    await waitForConfigReload();
+                    loadOIDC();
+                } catch (e) {
+                    notify(e.message, true);
+                }
+            }, true));
+        }
+        box.append(p, actions);
+    } catch (e) {
+        notify("Could not load the sign-in button: " + e.message, true);
+    }
+}
+
+document.getElementById("oidc-cancel").addEventListener("click", () => { oidcForm.hidden = true; });
+document.getElementById("oidc-test").addEventListener("click", async () => {
+    try {
+        const r = await call("POST", "/oidc/test", { issuerURL: oidcForm.issuerURL.value });
+        notify(r.message, !r.ok);
+    } catch (e) {
+        notify(e.message, true);
+    }
+});
+
+oidcForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const f = oidcForm;
+    const body = {
+        buttonName: f.buttonName.value, issuerURL: f.issuerURL.value, clientID: f.clientID.value,
+        clientSecret: f.clientSecret.value, extraScopes: splitList(f.extraScopes.value),
+        createAccounts: f.createAccounts.checked, newAccountRole: f.newAccountRole.value,
+        showOnLogin: f.showOnLogin.checked,
+    };
+    try {
+        await call("PUT", "/oidc", body);
+        f.hidden = true;
+        notify("Saved the sign-in button, reloading…");
+        await waitForConfigReload();
+        loadOIDC();
     } catch (e) {
         notify(e.message, true);
     }
@@ -674,6 +771,7 @@ async function loadOverview() {
         const o = await call("GET", "/overview");
         renderSetup(o);
         const rows = [
+            ...(o.configError ? [["Config problem", "Your latest change wasn't applied, DashDen is still running the one before it: " + o.configError]] : []),
             ["Sign-in", o.signIn.length ? o.signIn.join(", ") : "None, anyone who can reach DashDen can see it"],
             ["Household", o.members ? `${o.members} people, admins: ${o.admins.length ? o.admins.join(", ") : "none yet"}` : "No household profiles yet"],
             ["Pages", String(o.pages)],
@@ -794,7 +892,7 @@ async function loadHistory() {
     }
 }
 
-const loaders = { overview: loadOverview, people: loadPeople, signin: loadSignIn, access: loadAccess, apps: loadApps, themes: loadThemes, secrets: loadSecrets, history: loadHistory, server: loadServer };
+const loaders = { overview: loadOverview, people: loadPeople, signin: () => { loadSignIn(); loadOIDC(); }, access: loadAccess, apps: loadApps, themes: loadThemes, secrets: loadSecrets, history: loadHistory, server: loadServer };
 
 function showTab(name) {
     for (const tab of document.querySelectorAll(".settings-tab")) {

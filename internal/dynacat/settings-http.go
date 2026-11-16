@@ -39,6 +39,7 @@ func (a *application) registerSettingsRoutes(mux *http.ServeMux) {
 		mux.HandleFunc("POST /settings/recover", a.handleRecoveryPage)
 	}
 	a.registerSettingsPeopleRoutes(mux)
+	a.registerSettingsOIDCRoutes(mux)
 	a.registerSettingsAppsRoutes(mux)
 	a.registerSettingsThemesRoutes(mux)
 	mux.HandleFunc("GET /api/settings/overview", a.settingsJSON(a.handleSettingsOverview))
@@ -134,6 +135,7 @@ type settingsOverview struct {
 	MissingSecret int           `json:"missingSecrets"`
 	Snapshots     int           `json:"snapshots"`
 	Setup         settingsSetup `json:"setup"`
+	ConfigError   string        `json:"configError,omitempty"`
 }
 
 // settingsSetup drives the getting-started steps on the Overview tab.
@@ -180,6 +182,9 @@ func (a *application) handleSettingsOverview(w http.ResponseWriter, r *http.Requ
 	}
 	if snaps, err := listConfigSnapshots(a.configPath); err == nil {
 		o.Snapshots = len(snaps)
+	}
+	if err := getLastConfigError(); err != nil {
+		o.ConfigError = err.Error()
 	}
 	o.Setup = settingsSetup{HasAdmin: a.hasHouseholdAdmin(), SignIn: a.AnyAuthEnabled(), AppsAdded: len(a.appsInUse())}
 	if u := a.settingsUser(w, r); u != nil {

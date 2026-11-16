@@ -202,6 +202,13 @@ func (a *application) handleSettingsPeopleList(w http.ResponseWriter, r *http.Re
 			Home: m.Home, Theme: m.Theme, Groups: m.Groups, HasPassword: hasPassword,
 		})
 	}
+	// People who can sign in with a password but have no profile yet, so they
+	// can be found here and given one.
+	for username := range a.Config.Auth.Users {
+		if _, m := a.findHouseholdMember(username); m == nil {
+			people = append(people, settingsPerson{Username: username, HasPassword: true})
+		}
+	}
 	slices.SortFunc(people, func(x, y settingsPerson) int { return strings.Compare(x.Username, y.Username) })
 
 	pages := []settingsOption{}
@@ -234,6 +241,12 @@ func (a *application) handleSettingsPersonSave(w http.ResponseWriter, r *http.Re
 	if !settingsUsernamePattern.MatchString(username) {
 		writeJSONError(w, http.StatusBadRequest, "Usernames are letters, numbers, dots, dashes, underscores and @, and match what the person signs in with.")
 		return
+	}
+	// Sign-in ignores capital letters, so reuse the spelling already in use.
+	if existing, m := a.findHouseholdMember(username); m != nil {
+		username = existing
+	} else if existing, u := a.findPasswordUser(username); u != nil {
+		username = existing
 	}
 	var in settingsPersonInput
 	if err := decodeSettingsBody(r, &in); err != nil {
@@ -325,8 +338,6 @@ func (a *application) pageSlugExists(slug string) bool {
 	}
 	return false
 }
-
-const generatedSecretKeyName = "DASHDEN_AUTH_SECRET"
 
 // ensureAuthSecretKey adds the signing key that password sign-in needs. The
 // key itself goes in the managed secrets file, and the config refers to it.
@@ -641,4 +652,30 @@ func (a *application) handleSettingsAccessSave(w http.ResponseWriter, r *http.Re
 	}
 	slog.Info("Page access saved from Settings", "page", p.Title)
 	writeJSON(w, http.StatusOK, map[string]any{"saved": p.Title})
+}
+
+// addHouseholdMemberFromSignIn gives someone a profile the first time they
+// sign in through a provider that is set to create accounts.
+func (a *application) addHouseholdMemberFromSignIn(username, name string) error {
+	if a.configPath == "" {
+		return errors.New("no config file to write to")
+	}
+	role := a.Config.Auth.OIDC.NewAccountRole
+	if role == "" {
+		role = householdRoleAdult
+	}
+	return a.changeConfig(func(root *yaml.Node) error {
+		members, err := editableSection(root, "household", "members")
+		if err != nil {
+			return err
+		}
+		if getMappingValue(members, username) != nil {
+			return nil
+		}
+		member := newMappingNode()
+		setOrRemove(member, "name", strings.TrimSpace(name))
+		setMappingKey(member, "role", scalarNode(role))
+		setMappingKey(members, username, member)
+		return nil
+	})
 }

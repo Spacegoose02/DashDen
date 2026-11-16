@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -111,6 +112,15 @@ type oidcConfig struct {
 	GroupsClaim   string   `yaml:"groups-claim"`
 	AllowedGroups []string `yaml:"allowed-groups"`
 	AllowedUsers  []string `yaml:"allowed-users"`
+
+	// DashDen additions, all optional.
+	ButtonName string `yaml:"button-name"`
+	HideButton bool   `yaml:"hide-button"`
+	// nil keeps upstream's behaviour (anyone the provider signs in may enter).
+	// true also gives newcomers a household profile; false lets in only people
+	// who already have one.
+	CreateAccounts *bool  `yaml:"create-accounts"`
+	NewAccountRole string `yaml:"new-account-role"`
 }
 
 type user struct {
@@ -607,11 +617,8 @@ func isConfigStateValid(config *config) error {
 		return fmt.Errorf("no pages configured")
 	}
 
-	hasAnyAuth := len(config.Auth.Users) > 0 || config.Auth.OIDC != nil
 	hasAnyAuthMethod := (len(config.Auth.Users) > 0 && !config.Auth.DisablePassword) || config.Auth.OIDC != nil || config.Auth.Proxy != nil
-	if hasAnyAuth && config.Auth.SecretKey == "" {
-		return fmt.Errorf("secret-key must be set when auth is configured")
-	}
+	// A missing secret-key is made and saved for you; see resolveAuthSecretKey.
 
 	if config.Auth.RequireAuth != nil && *config.Auth.RequireAuth && !hasAnyAuthMethod {
 		return fmt.Errorf("require-auth cannot be true without a configured auth method")
@@ -636,8 +643,8 @@ func isConfigStateValid(config *config) error {
 		if oidc.ClientSecret == "" {
 			return fmt.Errorf("oidc: client-secret is required")
 		}
-		if oidc.RedirectURL == "" {
-			return fmt.Errorf("oidc: redirect-url is required")
+		if oidc.NewAccountRole != "" && !slices.Contains(householdRoles, oidc.NewAccountRole) {
+			return fmt.Errorf("oidc: new-account-role must be one of %s", strings.Join(householdRoles, ", "))
 		}
 	}
 
@@ -664,8 +671,15 @@ func isConfigStateValid(config *config) error {
 			if user.PasswordHashString == "" {
 				return fmt.Errorf("user %s must have a password or a password-hash set", username)
 			}
-		} else if len(user.Password) < 12 {
-			return fmt.Errorf("the password for %s must be at least 12 characters", username)
+		} else if len(user.Password) < 8 {
+			return fmt.Errorf("the password for %s must be at least 8 characters", username)
+		}
+
+		for other := range config.Auth.Users {
+			if other != username && strings.EqualFold(other, username) {
+				a, b := min(username, other), max(username, other)
+				return fmt.Errorf("auth users %q and %q differ only in capital letters; sign-in ignores case, so keep one", a, b)
+			}
 		}
 	}
 

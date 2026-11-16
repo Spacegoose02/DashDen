@@ -8,7 +8,6 @@ Protect your dashboard with username and password login. Configure via the top-l
 
 ```yaml
 auth:
-  secret-key: # generate with: ./dynacat secret:make
   users:
     admin:
       password: mysecretpassword
@@ -16,7 +15,16 @@ auth:
       password: anotherpassword
 ```
 
-To generate a secret key:
+The easiest way is to skip YAML altogether: in **Settings > People**, set a password for someone and DashDen writes a bcrypt hash for you. Things DashDen handles for you:
+
+- **Usernames ignore capital letters.** `Underwood02` can sign in as `underwood02`. Two users whose names differ only in case are refused when the config loads.
+- **Passwords need at least 8 characters.**
+- **Stay signed in.** Tick it on the sign-in page and that device stays signed in for 90 days after its last visit, renewed as it's used, so a wall tablet never has to sign in again. Without it, the session ends when the browser closes.
+- **`secret-key` is optional.** Leave it out and DashDen makes one and saves it to `config/.env` as `DASHDEN_AUTH_SECRET`, so sessions survive restarts. If you do set it, any random text of 16 or more characters works; upstream's 64-byte base64 keys keep working.
+- **Changes apply without a restart.** Editing the config or `config/.env` reloads DashDen, and a reload also clears the "too many tries" pause. After 5 wrong tries from one device, the sign-in page counts down the 5 minute pause.
+- **Broken changes are reported.** If the newest config has an error (a second `auth:` block, say), DashDen keeps running the previous one and says so on the sign-in page and in Settings, with the details in the container log.
+
+To generate a secret key yourself:
 
 ```sh
 ./dynacat secret:make
@@ -90,7 +98,7 @@ auth:
     issuer-url: https://auth.example.com       # required: OpenID Connect issuer URL
     client-id: dynacat                          # required
     client-secret: ${OIDC_CLIENT_SECRET}        # required
-    redirect-url: https://dashboard.example.com/api/oidc/callback  # required
+    redirect-url: https://dashboard.example.com/api/oidc/callback  # optional in DashDen
     scopes:                                     # optional, defaults shown
       - openid
       - profile
@@ -103,7 +111,19 @@ auth:
       - alice
 ```
 
-The `redirect-url` must match the callback URL configured in your identity provider. The path must end with `/api/oidc/callback`.
+The `redirect-url` must match the callback URL configured in your identity provider. The path must end with `/api/oidc/callback`. In DashDen it's optional: left out, DashDen uses the address the browser is on, such as `https://dash.example.com/api/oidc/callback`. Settings shows the exact address to paste into your provider.
+
+### Setting it up from Settings (DashDen)
+
+**Settings > Sign-in > Sign-in button (OIDC)** sets all of this up without YAML, for Tinyauth, Authelia, Pocket ID or any other OIDC provider:
+
+- **Name on the sign-in button**: the button reads "Sign in with Tinyauth".
+- **Issuer URL**, **Client ID** and **Client secret** come from your provider. **Test** checks the issuer before you save. The secret is saved to `config/.env` as `DASHDEN_OIDC_SECRET`; leave it empty later to keep it.
+- **Extra scopes**: `openid`, `profile` and `email` are always asked for.
+- **Create a profile for anyone who signs in with it**: on, newcomers get a household profile (as an adult unless you pick another role). Off, only people who already have a profile under People can sign in. Only turn it on for a provider that lets in just people you trust.
+- **Show on the sign-in page**: off keeps the button hidden while `/api/oidc/login` still works.
+
+These are saved as `button-name`, `create-accounts`, `new-account-role` and `hide-button` under `auth.oidc`. If the provider can't be reached when DashDen starts, DashDen still starts and the button tries again, saying so if it's still down.
 
 ### Disabling password auth (OIDC-only mode)
 
