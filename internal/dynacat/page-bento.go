@@ -68,12 +68,35 @@ func parseBentoTile(value string) (bentoTile, error) {
 	return tile, nil
 }
 
+// Widgets made for the family apps mark the tile they're designed for with a
+// css-class: bento-s (1x1), bento-w (2x1), bento-t (1x2) or bento-l (2x2).
+// On a bento page that class sizes the tile when the widget sets no tile.
+var bentoClassTiles = map[string]string{
+	"bento-s": "1x1",
+	"bento-w": "2x1",
+	"bento-t": "1x2",
+	"bento-l": "2x2",
+}
+
+func tileFromCSSClass(classes string) string {
+	for _, c := range strings.Fields(classes) {
+		if tile, ok := bentoClassTiles[c]; ok {
+			return tile
+		}
+	}
+	return ""
+}
+
 // TileAttrs gives a widget's tile size to the bento grid.
 func (w *widgetBase) TileAttrs() template.HTMLAttr {
-	if w.Tile == "" {
+	value := w.Tile
+	if value == "" {
+		value = tileFromCSSClass(w.CSSClass)
+	}
+	if value == "" {
 		return ""
 	}
-	tile, err := parseBentoTile(w.Tile)
+	tile, err := parseBentoTile(value)
 	if err != nil {
 		return ""
 	}

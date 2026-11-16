@@ -38,7 +38,7 @@ New behaviour goes in **new files**. An upstream file only gets a short hook tha
 | Shared database waits instead of failing with "database is locked" | `sqlite-open.go` | |
 | Undo in the editor right after a change | `editor-undo.go` | |
 | Built-in themes and theme styles (glass, neon, kids and more) | `theme-styles.go`, `static/css/theme-styles.css` | `themes.md` |
-| Bento pages, `tile` sizes, `width: full` and the Wide view button | `page-bento.go`, `static/js/bento.js`, `static/css/bento.css` | `configuration.md` |
+| Bento pages, `tile` sizes (or a `bento-s`/`-w`/`-t`/`-l` css-class), `width: full` and the Wide view button | `page-bento.go`, `static/js/bento.js`, `static/css/bento.css` | `configuration.md` |
 | Docker image, Unraid template and compose, upstream watch | `.github/workflows/upstream-watch.yml`, `docker-compose.dashden.yml`, `unraid/` | `README.md` |
 
 Every Go file above has a `_test.go` next to it.

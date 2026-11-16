@@ -40,6 +40,20 @@ func TestTileAttrs(t *testing.T) {
 	}
 }
 
+func TestTileFromBentoClass(t *testing.T) {
+	w := &widgetBase{CSSClass: "my-card bento-t"}
+	if got := string(w.TileAttrs()); got != `data-tile-w="1" data-tile-h="2" style="--tile-h: 2"` {
+		t.Fatal(got)
+	}
+	w = &widgetBase{CSSClass: "bento-l", Tile: "wide"}
+	if got := string(w.TileAttrs()); got != `data-tile-w="2"` {
+		t.Fatal("tile should win over the class:", got)
+	}
+	if (&widgetBase{CSSClass: "bento-xl"}).TileAttrs() != "" {
+		t.Fatal("unknown class should add nothing")
+	}
+}
+
 func TestBentoPageConfig(t *testing.T) {
 	_, err := newConfigFromYAML([]byte(`
 pages:

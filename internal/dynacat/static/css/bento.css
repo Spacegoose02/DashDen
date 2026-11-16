@@ -38,6 +38,11 @@ html.dd-wide .content-bounds {
     height: calc(var(--tile-h) * var(--bento-cell) + (var(--tile-h) - 1) * var(--widget-gap));
 }
 
+/* A widget that hides itself (custom-api's hide) takes no tile. */
+.page-columns-bento .widget[data-widget-hidden="true"] {
+    display: none;
+}
+
 .page-columns-bento .widget[data-tile-h] > .widget-content {
     flex: 1;
     min-height: 0;
