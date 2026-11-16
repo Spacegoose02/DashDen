@@ -155,6 +155,9 @@ func serveApp(configPath string) error {
 		setLastConfigError(nil)
 
 		warnings := checkConfigKeys(newContents, locate)
+		for _, missing := range missingConfigVariables(newContents, locate) {
+			warnings = append(warnings, "Not set, so the widgets that use it are turned off: "+missing)
+		}
 		for _, w := range warnings {
 			slog.Warn("Ignored config setting", "problem", w)
 		}

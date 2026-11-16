@@ -579,6 +579,17 @@ func checkConfigFile(configPath string) int {
 		fmt.Printf("✗ The config has an error and DashDen won't load it:\n  %v\n", explainConfigError(err, contents, locate))
 	}
 
+	var missing []string
+	if err == nil {
+		missing = missingConfigVariables(contents, locate)
+	}
+	if len(missing) > 0 {
+		fmt.Printf("%d variable(s) aren't set, so the widgets that use them are turned off:\n", len(missing))
+		for _, m := range missing {
+			fmt.Printf("  • %s\n", m)
+		}
+	}
+
 	if len(warnings) > 0 {
 		fmt.Printf("\n%d setting(s) are ignored:\n", len(warnings))
 		for _, w := range warnings {
@@ -586,7 +597,7 @@ func checkConfigFile(configPath string) int {
 		}
 	}
 
-	if err != nil || len(warnings) > 0 {
+	if err != nil || len(warnings) > 0 || len(missing) > 0 {
 		return 1
 	}
 

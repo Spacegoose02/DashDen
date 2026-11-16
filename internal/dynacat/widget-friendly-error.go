@@ -12,6 +12,9 @@ func friendlyWidgetError(err error) string {
 	if err == nil {
 		return "This widget couldn't load."
 	}
+	if friendly, ok := friendlyMissingVariables(err); ok {
+		return friendly
+	}
 	msg := strings.ToLower(err.Error())
 	if errors.Is(err, errPartialContent) {
 		return "Some of this widget's data couldn't load."
