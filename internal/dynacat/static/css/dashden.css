@@ -74,3 +74,66 @@
 .widget-error-details p {
     margin-top: 0.4rem;
 }
+
+/* Pages that don't fit in the header move into a "More" menu. */
+.nav-item.nav-item-overflow {
+    display: none;
+}
+
+.nav-more {
+    position: relative;
+    align-self: center;
+    flex-shrink: 0;
+    margin-left: var(--header-items-gap);
+}
+
+.nav-more-button {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    color: var(--color-text-base);
+    font: inherit;
+    font-size: var(--font-size-h3);
+}
+
+.nav-more-button:hover,
+.nav-more-button[aria-expanded="true"] {
+    color: var(--color-text-highlight);
+}
+
+.nav-more-button svg {
+    width: 1.6rem;
+    height: 1.6rem;
+}
+
+.nav-more-menu {
+    position: absolute;
+    top: calc(100% + 1.2rem);
+    right: 0;
+    z-index: 20;
+    min-width: 18rem;
+    padding: 0.6rem;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--color-widget-content-border);
+    background: var(--color-widget-background);
+    box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.35);
+}
+
+.nav-more-item {
+    display: block;
+    padding: 0.8rem 1.2rem;
+    border-radius: calc(var(--border-radius) - 2px);
+    font-size: var(--font-size-h4);
+    color: var(--color-text-base);
+    white-space: nowrap;
+}
+
+.nav-more-item:hover,
+.nav-more-item:focus-visible {
+    background: var(--color-widget-background-highlight);
+    color: var(--color-text-highlight);
+}
