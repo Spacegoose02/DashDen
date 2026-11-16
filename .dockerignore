@@ -10,4 +10,5 @@
 !/go.sum
 !main.go
 !/docker/entrypoint.sh
+!/docker/dashden
 !/windows/dynacat.iss

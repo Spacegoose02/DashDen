@@ -116,7 +116,60 @@ func (widget *denAppWidget) v1HomePath(rest string) string {
 }
 
 func (widget *denAppWidget) dendropMessagesPath() string {
-	return "/api/bot/v1/channels/" + url.PathEscape(widget.Channel) + "/messages"
+	return "/api/bot/v1/channels/" + url.PathEscape(widget.channelID) + "/messages"
+}
+
+type dendropServer struct {
+	Name     string `json:"name"`
+	Channels []struct {
+		ID   int    `json:"id"`
+		Kind string `json:"kind"`
+		Name string `json:"name"`
+	} `json:"channels"`
+}
+
+// resolveDendropChannel turns a channel name into its number. Dendrop
+// doesn't show channel numbers anywhere, so channel can be "general",
+// "#general" or "Family/general" when two servers have a channel of that name.
+func (widget *denAppWidget) resolveDendropChannel(ctx context.Context) error {
+	if widget.channelID != "" {
+		return nil
+	}
+	if _, err := strconv.Atoi(widget.Channel); err == nil {
+		widget.channelID = widget.Channel
+		return nil
+	}
+	serverName, channelName, found := strings.Cut(widget.Channel, "/")
+	if !found {
+		serverName, channelName = "", widget.Channel
+	}
+	channelName = strings.TrimPrefix(strings.TrimSpace(channelName), "#")
+	serverName = strings.TrimSpace(serverName)
+
+	servers, err := fetchDenApp[[]dendropServer](ctx, widget, "/api/bot/v1/servers")
+	if err != nil {
+		return err
+	}
+	var ids []string
+	for _, s := range servers {
+		if serverName != "" && !strings.EqualFold(s.Name, serverName) {
+			continue
+		}
+		for _, c := range s.Channels {
+			if strings.EqualFold(c.Name, channelName) && (c.Kind == "" || c.Kind == "text") {
+				ids = append(ids, strconv.Itoa(c.ID))
+			}
+		}
+	}
+	switch len(ids) {
+	case 0:
+		return fmt.Errorf("the bot can't see a channel called %q. Add the bot to that server, or check the name", widget.Channel)
+	case 1:
+		widget.channelID = ids[0]
+		return nil
+	default:
+		return fmt.Errorf("more than one server has a channel called %q. Write it as \"Server name/%s\"", channelName, channelName)
+	}
 }
 
 func (widget *denAppWidget) updateMore(ctx context.Context) error {
@@ -149,6 +202,9 @@ func (widget *denAppWidget) updateMore(ctx context.Context) error {
 		widget.TimeAsks = slices.DeleteFunc(asks, func(a lootdenTimeRequest) bool { return a.State != "pending" })
 
 	case widget.App == denAppDendrop:
+		if err := widget.resolveDendropChannel(ctx); err != nil {
+			return err
+		}
 		// The quick buttons work even when the bot isn't allowed to read the
 		// channel, so a 403 here only leaves the message list empty.
 		req, err := widget.newRequest(withSharedFetchMaxAge(ctx, time.Nanosecond), http.MethodGet, widget.dendropMessagesPath()+"?limit=5", nil)
@@ -206,6 +262,9 @@ func (widget *denAppWidget) planMoreAction(action string, body map[string]string
 		i, err := strconv.Atoi(body["id"])
 		if err != nil || i < 0 || i >= len(widget.Messages) {
 			return "", "", nil, errors.New("unknown message")
+		}
+		if widget.channelID == "" {
+			return "", "", nil, errors.New("the channel hasn't been found yet")
 		}
 		return http.MethodPost, widget.dendropMessagesPath(), map[string]string{"content": widget.Messages[i]}, nil
 	}

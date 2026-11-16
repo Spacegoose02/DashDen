@@ -280,7 +280,7 @@ var fieldAnnotations = map[string]map[string]fieldAnnotation{
 	"den-app": {
 		"app":            {Options: []string{"den-duty", "nighttime-ninja", "wavelength", "lootden", "dendrop"}},
 		"view":           {Options: []string{"parent-duty", "low"}, Hint: "Den Duty: parent-duty shows the grown-ups' to-dos. Nighttime Ninja: low shows what's running low. Leave empty for the usual view."},
-		"channel":        {Hint: "Dendrop only: the channel id to post to."},
+		"channel":        {Hint: "Dendrop only: the channel's name, e.g. general, or Server name/general when two servers have one."},
 		"messages":       {Hint: "Dendrop only: the quick messages, one button each."},
 		"token":          {Hint: "Use ${NAME} and set the value under Settings, Secrets. Den Duty needs a read-and-control token for the buttons."},
 		"home-id":        {Hint: "Den Duty and Nighttime Ninja only."},

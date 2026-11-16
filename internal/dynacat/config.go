@@ -180,9 +180,17 @@ func (c *config) assetsPath() string {
 }
 
 func newConfigFromYAML(contents []byte) (*config, error) {
-	contents, err := parseConfigVariables(contents)
+	contents, err := parseConfigVariablesMarkingMissing(contents)
 	if err != nil {
 		return nil, err
+	}
+
+	// DashDen: a widget missing a variable turns itself off (config-missing-vars.go);
+	// missing anywhere else still stops the config.
+	if outside, err := missingVariablesOutsideWidgets(contents); err != nil {
+		return nil, err
+	} else if len(outside) > 0 {
+		return nil, fmt.Errorf("parsing variable: environment variable %s not found", strings.Join(outside, ", "))
 	}
 
 	config := &config{}
@@ -226,12 +234,18 @@ var envVariableNamePattern = regexp.MustCompile(`^[A-Z0-9_]+$`)
 var configVariablePattern = regexp.MustCompile(`(^|.)\$\{(?:([a-zA-Z]+):)?([a-zA-Z0-9_-]+)\}`)
 
 func parseConfigVariables(contents []byte) ([]byte, error) {
-	return expandConfigVariables(contents, true)
+	return expandConfigVariables(contents, true, false)
+}
+
+// Like parseConfigVariables, but an unset ${ENV_VAR} becomes a marker
+// instead of an error, so the widget using it can be turned off alone.
+func parseConfigVariablesMarkingMissing(contents []byte) ([]byte, error) {
+	return expandConfigVariables(contents, true, true)
 }
 
 // Expands ${ENV_VAR} only, so a remote template cannot pull a mounted secret into the URL it calls.
 func parseEnvVariablesOnly(contents []byte) ([]byte, error) {
-	return expandConfigVariables(contents, false)
+	return expandConfigVariables(contents, false, false)
 }
 
 var yamlBlockScalarPattern = regexp.MustCompile(`(^\s*|[:-]\s+)([&!]\S*\s+)*[|>][-+0-9]*\s*$`)
@@ -262,7 +276,7 @@ func yamlQuoteOpensScalar(before []byte) bool {
 	return len(before) == 0 || strings.IndexByte(":-[{,", before[len(before)-1]) >= 0
 }
 
-func expandConfigVariables(contents []byte, allowTypedVariables bool) ([]byte, error) {
+func expandConfigVariables(contents []byte, allowTypedVariables, markMissing bool) ([]byte, error) {
 	var err error
 
 	replace := func(match []byte) []byte {
@@ -291,6 +305,9 @@ func expandConfigVariables(contents []byte, allowTypedVariables bool) ([]byte, e
 		variableType := ternary(typeAsString == "", configVarTypeEnv, typeAsString)
 
 		parsedValue, returnOriginal, localErr := parseConfigVariableOfType(variableType, variableName)
+		if localErr != nil && markMissing && variableType == configVarTypeEnv {
+			return []byte(prefix + missingVariableValue(variableName))
+		}
 		if localErr != nil {
 			err = fmt.Errorf("parsing variable: %v", localErr)
 			return nil

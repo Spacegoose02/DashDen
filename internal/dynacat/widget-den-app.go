@@ -46,6 +46,8 @@ type denAppWidget struct {
 	TimeAsks []lootdenTimeRequest `yaml:"-"`
 	Chat     []dendropMessage     `yaml:"-"`
 	baseURL  string               `yaml:"-"`
+	// Dendrop: the channel's number, looked up once when channel is a name.
+	channelID string `yaml:"-"`
 }
 
 const (

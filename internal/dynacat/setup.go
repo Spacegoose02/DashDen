@@ -141,7 +141,7 @@ func firstRunSetupAddr(path string) string {
 	cfg.Server.Port = firstRunDefaultPort
 
 	if contents, _, err := parseYAMLIncludes(path); err == nil {
-		if contents, err = parseConfigVariables(contents); err == nil {
+		if contents, err = parseConfigVariablesMarkingMissing(contents); err == nil {
 			yaml.Unmarshal(contents, &cfg)
 		}
 	}

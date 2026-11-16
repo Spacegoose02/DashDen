@@ -123,6 +123,11 @@ func (w *widgets) UnmarshalYAML(node *yaml.Node) error {
 	}
 
 	for _, node := range nodes {
+		if missing := missingVariablesIn(&node); len(missing) > 0 {
+			*w = append(*w, newMissingVariablesWidget(&node, missing))
+			continue
+		}
+
 		meta := struct {
 			Type string `yaml:"type"`
 		}{}
