@@ -1,0 +1,20 @@
+{{ define "config-problems" }}
+{{- with .App.ConfigProblemsFor .AuthUser }}{{ if .Count }}
+<div class="content-bounds"><details class="config-problems{{ if .ReloadError }} config-problems-error{{ end }}">
+    <summary>
+        {{- if .ReloadError }}Your last config change didn't load, so DashDen is still showing the version before it.
+        {{- else }}{{ len .Warnings }} config setting{{ if gt (len .Warnings) 1 }}s are{{ else }} is{{ end }} being ignored.
+        {{- end }} <span class="config-problems-more">Show details</span>
+    </summary>
+    {{- if .ReloadError }}
+    <p class="config-problems-reload">{{ .ReloadError }}</p>
+    {{- end }}
+    {{- if .Warnings }}
+    <ul>
+        {{- range .Warnings }}<li>{{ . }}</li>{{ end }}
+    </ul>
+    {{- end }}
+    <p class="config-problems-hint">Only people who can open Settings see this. To list them from a terminal, run <code>docker exec dashden dashden check</code>.</p>
+</details></div>
+{{- end }}{{ end }}
+{{ end }}

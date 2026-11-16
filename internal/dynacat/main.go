@@ -56,16 +56,7 @@ func Main() int {
 			return 1
 		}
 	case cliIntentConfigValidate:
-		contents, _, err := parseYAMLIncludes(options.configPath)
-		if err != nil {
-			fmt.Printf("Could not parse config file: %v\n", err)
-			return 1
-		}
-
-		if _, err := newConfigFromYAML(contents); err != nil {
-			fmt.Printf("Config file is invalid: %v\n", err)
-			return 1
-		}
+		return checkConfigFile(options.configPath)
 	case cliIntentConfigPrint:
 		contents, _, err := parseYAMLIncludes(options.configPath)
 		if err != nil {
@@ -154,10 +145,17 @@ func serveApp(configPath string) error {
 			slog.Info("Config file changed, reloading")
 		}
 
+		locate := newConfigLocator(configPath)
 		config, err := newConfigFromYAML(newContents)
 		if err != nil {
-			slog.Error("Config has errors", "error", err)
+			err = explainConfigError(err, newContents, locate)
+			currentConfigHealth.failed(err)
 			setLastConfigError(err)
+			if hadValidConfigOnStartup {
+				slog.Error("Config has errors, still showing the last working version", "error", err)
+			} else {
+				slog.Error("Config has errors", "error", err)
+			}
 
 			if !hadValidConfigOnStartup {
 				close(exitChannel)
@@ -179,6 +177,12 @@ func serveApp(configPath string) error {
 		}
 		app.configPath = configPath
 		setLastConfigError(nil)
+
+		warnings := checkConfigKeys(newContents, locate)
+		for _, w := range warnings {
+			slog.Warn("Ignored config setting", "problem", w)
+		}
+		currentConfigHealth.loaded(warnings)
 
 		if !hadValidConfigOnStartup {
 			hadValidConfigOnStartup = true

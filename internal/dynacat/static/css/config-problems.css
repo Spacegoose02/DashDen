@@ -1,0 +1,54 @@
+.config-problems {
+    margin-top: 1.5rem;
+    padding: 1rem 1.5rem;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--color-widget-content-border);
+    border-left: 4px solid hsl(40, 90%, 55%);
+    background: var(--color-widget-background);
+    font-size: var(--font-size-h5);
+    color: var(--color-text-base);
+}
+
+.config-problems-error {
+    border-left-color: var(--color-negative);
+}
+
+.config-problems summary {
+    cursor: pointer;
+    list-style: none;
+}
+
+.config-problems summary::-webkit-details-marker {
+    display: none;
+}
+
+.config-problems-more {
+    color: var(--color-primary);
+    margin-left: 0.5rem;
+}
+
+.config-problems[open] .config-problems-more {
+    display: none;
+}
+
+.config-problems ul {
+    margin: 1rem 0 0;
+    padding-left: 1.8rem;
+    list-style: disc;
+}
+
+.config-problems li {
+    margin-top: 0.6rem;
+    word-break: break-word;
+}
+
+.config-problems-reload {
+    margin-top: 1rem;
+    color: var(--color-negative);
+    word-break: break-word;
+}
+
+.config-problems-hint {
+    margin-top: 1rem;
+    color: var(--color-text-subdue);
+}

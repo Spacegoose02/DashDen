@@ -838,7 +838,7 @@ async function applyPastedWidget(controls, pasted, cleared) {
 
 // Mirrors configVariablePattern in config.go so the notice lists exactly what the server expands.
 const configVariablePattern = /(^|.)\$\{(?:([a-zA-Z]+):)?([a-zA-Z0-9_-]+)\}/g;
-const configVariableDocs = "https://dynacat.artur.zone/#configuration/environment-variables";
+const configVariableDocs = "https://github.com/Spacegoose02/DashDen/blob/main/docs/docs/configuration.md#environment-variables";
 
 function findConfigVariables(text) {
     const found = new Map();
@@ -1736,8 +1736,8 @@ function openStylingModal() {
         logo.append(reg("branding", "hide-logo", checkField("Hide logo", branding["hide-logo"])));
 
         const app = div("editor-fields");
-        app.append(reg("branding", "app-name", textField("App name", branding["app-name"], "Dynacat")));
-        app.append(reg("branding", "app-icon-url", textField("App icon URL", branding["app-icon-url"], "/assets/app-icon.svg")));
+        app.append(reg("branding", "app-name", textField("App name", branding["app-name"], "DashDen")));
+        app.append(reg("branding", "app-icon-url", textField("App icon URL", branding["app-icon-url"], "/assets/app-icon.png")));
         app.append(reg("branding", "app-background-color", colorField("App background color", branding["app-background-color"], resolveCssColor("--color-background"), "hex")));
 
         const misc = div("editor-fields");
