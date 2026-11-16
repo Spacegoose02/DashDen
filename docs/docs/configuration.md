@@ -1914,6 +1914,10 @@ Shows one of the household's own apps with buttons that act on it, so nobody has
 | `den-duty` | Today's chores for each kid | **Done** on a pending chore, **Approve** on one waiting for a grown-up |
 | `nighttime-ninja` | The shopping list (checked items hidden) | An add box, and a checkbox to tick an item off |
 | `wavelength` | Each speaker and what it's playing | Previous, play/pause, next |
+| `den-duty` with `view: parent-duty` | The grown-ups' open to-dos, dated ones first | **Done** |
+| `nighttime-ninja` with `view: low` | Pantry items running low | **Add** to the shopping list |
+| `lootden` | Kids' pending requests for more screen time | **Yes** and **No** |
+| `dendrop` | The last few messages in a family channel | One button per quick message, e.g. "Dinner's ready!" |
 
 Example:
 
@@ -1935,6 +1939,19 @@ Example:
   app: wavelength
   url: https://music.example.com
   token: ${WAVELENGTH_TOKEN}
+
+- type: den-app
+  app: lootden
+  url: https://games.example.com
+  token: ${LOOTDEN_ADMIN_KEY}
+  approve-groups: [adult]
+
+- type: den-app
+  app: dendrop
+  url: https://chat.example.com
+  token: ${DENDROP_BOT_TOKEN}
+  channel: ${DENDROP_FAMILY_CHANNEL}
+  messages: ["Dinner's ready! 🍽️", "Shoes on, we're leaving", "Bedtime in 10 minutes"]
 ```
 
 #### Properties
@@ -1946,6 +1963,9 @@ Example:
 | token | string | yes | |
 | home-id | string | for den-duty and nighttime-ninja | |
 | kid | string | no | |
+| view | string | no | |
+| channel | string | for dendrop | |
+| messages | array of strings | no | "Dinner's ready! 🍽️" |
 | action-groups | array of strings | no | everyone who can see the page |
 | approve-groups | array of strings | no | everyone allowed by `action-groups` |
 | collapse-after | integer | no | 8 |
@@ -1953,6 +1973,12 @@ Example:
 
 ##### `token`
 For Den Duty, create a token with "read and control" access so the buttons work. Keep tokens out of the config with `${NAME}` and set the value under Settings, Secrets.
+
+##### `view`
+`parent-duty` (Den Duty) or `low` (Nighttime Ninja). Leave it out for the usual view.
+
+##### `channel` and `messages`
+Dendrop only. The bot token is sent as `Bot <token>`, and the bot must be a member of the channel. A button can only send a message from this list.
 
 ##### `kid`
 Den Duty only. Show just this kid's chores, for example on a kid's own home page.

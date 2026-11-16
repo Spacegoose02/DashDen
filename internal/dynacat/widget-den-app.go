@@ -19,11 +19,16 @@ import (
 var denAppWidgetTemplate = mustParseTemplate("den-app.html", "widget-base.html")
 
 // denAppWidget shows one of the household's own apps with buttons that act on
-// it: ticking off or approving Den Duty chores, adding to and checking off the
-// Nighttime Ninja shopping list, and play/pause/skip on Wavelength devices.
+// it: ticking off or approving Den Duty chores and parent to-dos, adding to and
+// checking off the Nighttime Ninja shopping list (or adding what's running
+// low), play/pause/skip on Wavelength devices, answering LootDen's "more game
+// time" asks, and posting quick messages to a Dendrop channel.
 type denAppWidget struct {
 	widgetBase    `yaml:",inline"`
 	App           string   `yaml:"app"`
+	View          string   `yaml:"view"`
+	Channel       string   `yaml:"channel"`
+	Messages      []string `yaml:"messages"`
 	URL           string   `yaml:"url"`
 	Token         string   `yaml:"token"`
 	HomeID        string   `yaml:"home-id"`
@@ -33,19 +38,31 @@ type denAppWidget struct {
 	AllowInsecure bool     `yaml:"allow-insecure"`
 	CollapseAfter int      `yaml:"collapse-after"`
 
-	Kids     []denDutyKid       `yaml:"-"`
-	Shopping []ninjaShoppingRow `yaml:"-"`
-	Players  []wavelengthPlayer `yaml:"-"`
-	baseURL  string             `yaml:"-"`
+	Kids     []denDutyKid         `yaml:"-"`
+	Shopping []ninjaShoppingRow   `yaml:"-"`
+	Players  []wavelengthPlayer   `yaml:"-"`
+	Duties   []denDutyParentCard  `yaml:"-"`
+	Low      []ninjaLowItem       `yaml:"-"`
+	TimeAsks []lootdenTimeRequest `yaml:"-"`
+	Chat     []dendropMessage     `yaml:"-"`
+	baseURL  string               `yaml:"-"`
 }
 
 const (
 	denAppDenDuty        = "den-duty"
 	denAppNighttimeNinja = "nighttime-ninja"
 	denAppWavelength     = "wavelength"
+	denAppLootDen        = "lootden"
+	denAppDendrop        = "dendrop"
+
+	denViewParentDuty = "parent-duty"
+	denViewLow        = "low"
 )
 
-var denAppNames = []string{denAppDenDuty, denAppNighttimeNinja, denAppWavelength}
+var denAppNames = []string{denAppDenDuty, denAppNighttimeNinja, denAppWavelength, denAppLootDen, denAppDendrop}
+
+// denAppViews lists the views each app has besides its default one.
+var denAppViews = map[string][]string{denAppDenDuty: {denViewParentDuty}, denAppNighttimeNinja: {denViewLow}}
 
 type denDutyKid struct {
 	Kid    string         `json:"kid"`
@@ -112,14 +129,37 @@ func (widget *denAppWidget) initialize() error {
 	if (widget.App == denAppDenDuty || widget.App == denAppNighttimeNinja) && widget.HomeID == "" {
 		return errors.New("home-id is required for " + widget.App)
 	}
+	if widget.View != "" && !slices.Contains(denAppViews[widget.App], widget.View) {
+		if len(denAppViews[widget.App]) == 0 {
+			return errors.New(widget.App + " has no views")
+		}
+		return fmt.Errorf("view must be one of %s for %s", strings.Join(denAppViews[widget.App], ", "), widget.App)
+	}
+	if widget.App == denAppDendrop {
+		if widget.Channel == "" {
+			return errors.New("channel is required for dendrop")
+		}
+		widget.Messages = slices.DeleteFunc(widget.Messages, func(m string) bool { return strings.TrimSpace(m) == "" })
+		if len(widget.Messages) == 0 {
+			widget.Messages = []string{"Dinner's ready! 🍽️"}
+		}
+	}
 
 	widget.baseURL = strings.TrimRight(widget.URL, "/")
 	if widget.CollapseAfter == 0 {
 		widget.CollapseAfter = 8
 	}
 
-	titles := map[string]string{denAppDenDuty: "Chores", denAppNighttimeNinja: "Shopping list", denAppWavelength: "Wavelength"}
-	widget.withTitle(titles[widget.App]).withTitleURL(widget.baseURL).withCacheDuration(time.Minute)
+	titles := map[string]string{
+		denAppDenDuty: "Chores", denAppNighttimeNinja: "Shopping list", denAppWavelength: "Wavelength",
+		denAppLootDen: "More game time?", denAppDendrop: "Family chat",
+		denAppDenDuty + "/" + denViewParentDuty: "Parent to-dos", denAppNighttimeNinja + "/" + denViewLow: "Running low",
+	}
+	key := widget.App
+	if widget.View != "" {
+		key += "/" + widget.View
+	}
+	widget.withTitle(titles[key]).withTitleURL(widget.baseURL).withCacheDuration(time.Minute)
 	if widget.App == denAppWavelength {
 		widget.withCacheDuration(15 * time.Second)
 	}
@@ -144,7 +184,8 @@ func (widget *denAppWidget) newRequest(ctx context.Context, method, path string,
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("Authorization", "Bearer "+widget.Token)
+	// Dendrop's bot API takes "Bot <token>"; the other apps take a bearer token.
+	req.Header.Set("Authorization", ternary(widget.App == denAppDendrop, "Bot ", "Bearer ")+widget.Token)
 	req.Header.Set("Accept", "application/json")
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
@@ -159,8 +200,10 @@ func (widget *denAppWidget) homePath(rest string) string {
 func (widget *denAppWidget) update(ctx context.Context) {
 	var err error
 
-	switch widget.App {
-	case denAppDenDuty:
+	switch {
+	case widget.View != "" || widget.App == denAppLootDen || widget.App == denAppDendrop:
+		err = widget.updateMore(ctx)
+	case widget.App == denAppDenDuty:
 		var kids []denDutyKid
 		kids, err = fetchDenApp[[]denDutyKid](ctx, widget, widget.homePath("/ha/today"))
 		if err == nil && widget.Kid != "" {
@@ -169,13 +212,13 @@ func (widget *denAppWidget) update(ctx context.Context) {
 		if err == nil {
 			widget.Kids = kids
 		}
-	case denAppNighttimeNinja:
+	case widget.App == denAppNighttimeNinja:
 		var rows []ninjaShoppingRow
 		rows, err = fetchDenApp[[]ninjaShoppingRow](ctx, widget, widget.homePath("/shopping"))
 		if err == nil {
 			widget.Shopping = slices.DeleteFunc(rows, func(r ninjaShoppingRow) bool { return r.Checked })
 		}
-	case denAppWavelength:
+	case widget.App == denAppWavelength:
 		var res wavelengthPlayersResponse
 		res, err = fetchDenApp[wavelengthPlayersResponse](ctx, widget, "/api/ha/players")
 		if err == nil {
@@ -281,6 +324,9 @@ func (widget *denAppWidget) handleRequest(w http.ResponseWriter, r *http.Request
 
 // planAction turns a button press into the app's own API call.
 func (widget *denAppWidget) planAction(action string, body map[string]string, user *authenticatedUser) (string, string, any, error) {
+	if widget.View != "" || widget.App == denAppLootDen || widget.App == denAppDendrop {
+		return widget.planMoreAction(action, body, user)
+	}
 	switch widget.App {
 	case denAppDenDuty:
 		if action != "complete" && action != "approve" {
