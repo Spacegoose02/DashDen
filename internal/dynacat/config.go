@@ -406,6 +406,11 @@ func parseYAMLIncludes(mainFilePath string) ([]byte, map[string]struct{}, error)
 }
 
 func recursiveParseYAMLIncludes(mainFilePath string, includes map[string]struct{}, depth int) ([]byte, map[string]struct{}, error) {
+	return parseYAMLIncludesWithArgs(mainFilePath, nil, includes, depth)
+}
+
+// DashDen: includes can pass values with a with: block, see config-include-args.go.
+func parseYAMLIncludesWithArgs(mainFilePath string, args map[string]string, includes map[string]struct{}, depth int) ([]byte, map[string]struct{}, error) {
 	if depth > CONFIG_INCLUDE_RECURSION_DEPTH_LIMIT {
 		return nil, nil, fmt.Errorf("recursion depth limit of %d reached", CONFIG_INCLUDE_RECURSION_DEPTH_LIMIT)
 	}
@@ -421,47 +426,51 @@ func recursiveParseYAMLIncludes(mainFilePath string, includes map[string]struct{
 	}
 	mainFileDir := filepath.Dir(mainFileAbsPath)
 
+	if depth > 0 {
+		mainFileContents, err = applyIncludeArgs(mainFileContents, args, filepath.Base(mainFilePath))
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
 	if includes == nil {
 		includes = make(map[string]struct{})
 	}
-	var includesLastErr error
 
-	mainFileContents = configIncludePattern.ReplaceAllFunc(mainFileContents, func(match []byte) []byte {
-		if includesLastErr != nil {
-			return nil
+	lines := strings.Split(string(mainFileContents), "\n")
+	out := make([]string, 0, len(lines))
+
+	for i := 0; i < len(lines); i++ {
+		matches := configIncludePattern.FindStringSubmatch(lines[i])
+		if matches == nil {
+			out = append(out, lines[i])
+			continue
 		}
 
-		matches := configIncludePattern.FindSubmatch(match)
-		if len(matches) != 3 {
-			includesLastErr = fmt.Errorf("invalid include match: %v", matches)
-			return nil
-		}
-
-		indent := string(matches[1])
-		includeFilePath := strings.TrimSpace(string(matches[2]))
+		indent := matches[1]
+		includeFilePath := strings.TrimSpace(matches[2])
 		if !filepath.IsAbs(includeFilePath) {
 			includeFilePath = filepath.Join(mainFileDir, includeFilePath)
 		}
 
-		var fileContents []byte
-		var err error
+		includeArgs, skip, err := includeWithBlock(lines, i)
+		if err != nil {
+			return nil, nil, fmt.Errorf("%s: %w", filepath.Base(mainFilePath), err)
+		}
+		i += skip
 
 		includes[includeFilePath] = struct{}{}
 
-		fileContents, includes, err = recursiveParseYAMLIncludes(includeFilePath, includes, depth+1)
+		var fileContents []byte
+		fileContents, includes, err = parseYAMLIncludesWithArgs(includeFilePath, includeArgs, includes, depth+1)
 		if err != nil {
-			includesLastErr = err
-			return nil
+			return nil, nil, err
 		}
 
-		return []byte(prefixStringLines(indent, string(fileContents)))
-	})
-
-	if includesLastErr != nil {
-		return nil, nil, includesLastErr
+		out = append(out, prefixStringLines(indent, string(fileContents)))
 	}
 
-	return mainFileContents, includes, nil
+	return []byte(strings.Join(out, "\n")), includes, nil
 }
 
 func configFilesWatcher(

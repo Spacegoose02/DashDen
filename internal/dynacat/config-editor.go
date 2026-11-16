@@ -602,12 +602,18 @@ func mutateColumns(columns *yaml.Node, m editorMutation, docs *editorDocs) error
 		if !validIndex(slots, index) {
 			return fmt.Errorf("widget index out of range")
 		}
+		if err := checkSharedSlot(slots[index], true); err != nil {
+			return err
+		}
 		if err := editWidgetNode(slots[index].node, m.Fields, m.RawFields); err != nil {
 			return err
 		}
 	case "removeWidget":
 		if !validIndex(slots, index) {
 			return fmt.Errorf("widget index out of range")
+		}
+		if err := checkSharedSlot(slots[index], false); err != nil {
+			return err
 		}
 		slot := slots[index]
 		slot.seq.Content = removeNode(slot.seq.Content, slot.index)
@@ -618,6 +624,9 @@ func mutateColumns(columns *yaml.Node, m editorMutation, docs *editorDocs) error
 		}
 		if !validIndex(slots, index) {
 			return fmt.Errorf("widget index out of range")
+		}
+		if err := checkSharedSlot(slots[index], false); err != nil {
+			return err
 		}
 		slot := slots[index]
 		dstWidgets, dstOwner, err := resolveWidgets(colSlots, m.ToPath, docs)
@@ -1191,6 +1200,10 @@ type widgetSlot struct {
 	index     int
 	outerSeq  *yaml.Node
 	outerIdx  int
+	// DashDen: a widget from an include with a with: block. Its file is
+	// shared, so the editor moves or removes the include but won't edit it.
+	shared      bool
+	sharedCount int
 }
 
 // Flattens a list of widgets or columns into addressable slots, following includes in either list shape.
@@ -1219,6 +1232,11 @@ func expandWidgetSlots(list *yaml.Node, ownerPath string, docs *editorDocs, dept
 		include := includeTarget(item)
 		if include == "" {
 			slots = append(slots, raw)
+			continue
+		}
+
+		if getMappingValue(item, "with") != nil {
+			slots = append(slots, sharedIncludeSlots(raw, include, ownerPath, docs)...)
 			continue
 		}
 

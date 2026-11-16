@@ -50,9 +50,13 @@ func recursiveConfigLineMap(path string, depth int) ([]configSourceLine, error) 
 	}
 	dir := filepath.Dir(absPath)
 
+	// Arguments are filled in before includes are expanded, and a value with
+	// a line break would shift the lines below it. Values are almost always
+	// single-line, so the map ignores that case.
+	lines := strings.Split(string(contents), "\n")
 	var out []configSourceLine
-	for i, line := range strings.Split(string(contents), "\n") {
-		matches := configIncludePattern.FindStringSubmatch(line)
+	for i := 0; i < len(lines); i++ {
+		matches := configIncludePattern.FindStringSubmatch(lines[i])
 		if matches == nil {
 			out = append(out, configSourceLine{file: absPath, line: i + 1})
 			continue
@@ -62,6 +66,12 @@ func recursiveConfigLineMap(path string, depth int) ([]configSourceLine, error) 
 		if !filepath.IsAbs(includePath) {
 			includePath = filepath.Join(dir, includePath)
 		}
+
+		_, skip, err := includeWithBlock(lines, i)
+		if err != nil {
+			return nil, err
+		}
+		i += skip
 
 		included, err := recursiveConfigLineMap(includePath, depth+1)
 		if err != nil {
