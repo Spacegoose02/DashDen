@@ -134,3 +134,47 @@ func TestWatchEnvFile(t *testing.T) {
 		t.Fatal("creating config/.env should trigger a reload")
 	}
 }
+
+func TestStaySignedIn(t *testing.T) {
+	a := newLoginTestApp(t, loginTestConfig)
+	login := func(remember bool) *http.Cookie {
+		body, _ := json.Marshal(map[string]any{"username": "underwood02", "password": "correct-horse", "remember": remember})
+		r := httptest.NewRequest("POST", "/api/authenticate", strings.NewReader(string(body)))
+		r.Header.Set("Content-Type", "application/json")
+		r.RemoteAddr = "192.0.2.8:1"
+		w := httptest.NewRecorder()
+		a.handleAuthenticationAttempt(w, r)
+		for _, c := range w.Result().Cookies() {
+			if c.Name == AUTH_SESSION_COOKIE_NAME {
+				return c
+			}
+		}
+		t.Fatalf("no session cookie: %d", w.Code)
+		return nil
+	}
+
+	short := login(false)
+	if !short.Expires.IsZero() {
+		t.Fatal("without Stay signed in the cookie should end with the browser")
+	}
+	long := login(true)
+	if time.Until(long.Expires) < 80*24*time.Hour {
+		t.Fatalf("Stay signed in should keep the cookie for months, got %v", long.Expires)
+	}
+
+	_, _, remember, err := verifySessionTokenFor(long.Value, a.authSecretKey, time.Now().Add(85*24*time.Hour))
+	if err != nil || !remember {
+		t.Fatalf("a remembered token should still work after 85 days: %v", err)
+	}
+	if _, _, _, err := verifySessionTokenFor(short.Value, a.authSecretKey, time.Now().Add(15*24*time.Hour)); err == nil {
+		t.Fatal("a normal token should still expire after 14 days")
+	}
+
+	// Renewing a remembered session keeps it remembered.
+	r := httptest.NewRequest("GET", "/", nil)
+	r.AddCookie(&http.Cookie{Name: AUTH_SESSION_COOKIE_NAME, Value: long.Value})
+	_, regen, _, _ := verifySessionTokenFor(long.Value, a.authSecretKey, time.Now().Add(40*24*time.Hour))
+	if !regen {
+		t.Fatal("a remembered token should be renewed once it's a month old")
+	}
+}
