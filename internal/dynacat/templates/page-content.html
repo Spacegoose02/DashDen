@@ -10,7 +10,7 @@
 </div>
 {{ end }}
 
-<div class="page-columns{{ if .Page.IsBento }} page-columns-bento{{ end }}">
+<div class="page-columns{{ if .Page.IsBento }} page-columns-bento{{ end }}"{{ if .Page.IsBento }}{{ .Page.BentoAttrs }}{{ end }}>
 {{- range .Page.Columns }}
     <div class="page-column page-column-{{ .Size }}">
         {{- range .Widgets }}

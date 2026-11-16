@@ -648,7 +648,18 @@ pages:
 | `2` or `wide`, `3`, `4` or `banner` | That many columns, as tall as its content |
 | `1x2` or `tall` | One column, two tile heights |
 | `2x2` or `big` | Two columns, two tile heights |
-| `WxH` | Any width and height from 1 to 4 |
+| `WxH` | Any width and height from 1 to 6 |
+
+Set `bento-columns` to fix how many columns the grid has on wide screens (up to 12). Tiles then line up in the same rows on a laptop and an ultrawide monitor. Below 1100px the grid drops to two columns, and on phones to one.
+
+```yaml
+pages:
+  - name: Gaming
+    layout: bento
+    bento-columns: 6
+```
+
+Tiles can be up to 6 columns wide and 6 tile heights tall.
 
 A widget without a `tile` can take its size from its `css-class` instead: `bento-s` (1x1), `bento-w` (2x1), `bento-t` (1x2) or `bento-l` (2x2). The family app widget files use these, so they size themselves on a bento page. A `tile` on the widget wins over its class.
 

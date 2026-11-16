@@ -38,6 +38,23 @@ html.dd-wide .content-bounds {
     height: calc(var(--tile-h) * var(--bento-cell) + (var(--tile-h) - 1) * var(--widget-gap));
 }
 
+/* bento-columns: the same number of columns on every wide screen. */
+.page-columns-bento[data-bento-columns] {
+    grid-template-columns: repeat(var(--bento-cols), minmax(0, 1fr));
+}
+
+@media (max-width: 1100px) {
+    .page-columns-bento[data-bento-columns] {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 600px) {
+    .page-columns-bento[data-bento-columns] {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
 /* A widget that hides itself (custom-api's hide) takes no tile. */
 .page-columns-bento .widget[data-widget-hidden="true"] {
     display: none;
