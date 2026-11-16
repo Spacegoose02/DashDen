@@ -83,3 +83,5 @@ Secrets saved by earlier DashDen builds in `dashden-secrets.env` are still read,
 ## History
 
 Every save from the editor or from Settings first copies the files it's about to change into `.dashden-history/` next to your config. The History tab lists those saves, newest first. **Restore** puts the files back as they were just before that save. A restore is checked like any other save, and it is itself saved to history, so you can undo it. The newest 50 saves are kept.
+
+In the editor, each save also shows **Undo** for ten seconds. It puts back what that one change touched, as long as nobody has saved anything since. After that, use the History tab.
