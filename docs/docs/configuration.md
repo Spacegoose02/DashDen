@@ -1418,6 +1418,8 @@ A map of additional requests that will be executed concurrently and then made av
 
 The subrequests support all the same properties as the main request, except for `subrequests` itself, so you can use `headers`, `parameters`, etc.
 
+If a subrequest fails (it times out, the connection is refused, or the response can't be read), the widget still renders and `.Subrequest` returns nothing for that key, so wrap the parts that use it in `{{ if $anotherOne }}`. Only a failed main request fails the whole widget.
+
 `(.Subrequest "key")` can be a little cumbersome to write, so you can define a variable to make it easier:
 
 ```yaml
