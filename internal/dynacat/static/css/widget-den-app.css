@@ -51,6 +51,17 @@
     text-align: center;
 }
 
+/* A small status in place of a button, e.g. "✓ Listed". Never wraps. */
+.den-app-pill {
+    flex-shrink: 0;
+    white-space: nowrap;
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
+    font-size: var(--font-size-h6);
+    color: var(--color-positive);
+    background: color-mix(in srgb, var(--color-positive) 14%, transparent);
+}
+
 .den-app-add {
     margin-bottom: 1.2rem;
 }
@@ -182,4 +193,107 @@
     .notice-remove {
         opacity: 0.6;
     }
+}
+
+/* Wavelength: one card per device that has something loaded. */
+.den-wave-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 26rem), 1fr));
+    gap: 1.2rem;
+}
+
+.den-wave {
+    display: flex;
+    gap: 1.2rem;
+    align-items: center;
+    min-width: 0;
+}
+
+.den-wave-art {
+    flex-shrink: 0;
+    width: 7.2rem;
+    aspect-ratio: 1;
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    background: var(--color-widget-background-highlight);
+    display: grid;
+    place-items: center;
+    font-size: 2.8rem;
+}
+
+.den-wave-art img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.den-wave-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.den-wave-title {
+    font-size: var(--font-size-h3);
+    line-height: 1.25;
+}
+
+.den-wave-live {
+    color: var(--color-negative);
+    font-weight: 700;
+    letter-spacing: 0.05em;
+}
+
+.den-wave-time {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    margin-top: 0.3rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.den-wave-time .den-app-progress {
+    margin-top: 0;
+}
+
+.den-wave .den-app-controls {
+    margin-top: 0.5rem;
+}
+
+.den-wave-toggle {
+    color: var(--color-primary);
+}
+
+.den-wave-idle {
+    margin-top: 1rem;
+}
+
+/* Three bars that bounce while a device is playing. */
+.den-wave-eq {
+    display: inline-flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 0.9em;
+    margin-right: 0.5rem;
+    vertical-align: -0.05em;
+}
+
+.den-wave-eq i {
+    width: 3px;
+    height: 100%;
+    background: var(--color-primary);
+    animation: den-wave-eq 1s ease-in-out infinite;
+}
+
+.den-wave-eq i:nth-child(2) { animation-delay: -0.35s; }
+.den-wave-eq i:nth-child(3) { animation-delay: -0.7s; }
+
+@keyframes den-wave-eq {
+    0%, 100% { transform: scaleY(0.3); transform-origin: bottom; }
+    50% { transform: scaleY(1); transform-origin: bottom; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .den-wave-eq i { animation: none; }
 }

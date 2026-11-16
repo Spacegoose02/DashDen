@@ -49,7 +49,7 @@ func newDenMock(t *testing.T) (*denMock, *httptest.Server) {
 			})
 		case "GET /api/ha/players":
 			json.NewEncoder(w).Encode(map[string]any{"players": []map[string]any{
-				{"id": "p1", "name": "Kitchen", "state": "playing", "title": "Song", "artist": "Band", "position": 30, "duration": 120},
+				{"id": 7, "name": "Kitchen", "state": "playing", "title": "Song", "artist": "Band", "position": 30, "duration": 120},
 			}})
 		case "GET /api/admin/activity":
 			json.NewEncoder(w).Encode(map[string]any{"nowPlaying": []map[string]any{
@@ -239,13 +239,13 @@ func TestWavelengthControls(t *testing.T) {
 	if len(w.Players) != 1 || w.Players[0].Percent() != 25 {
 		t.Fatalf("got %+v", w.Players)
 	}
-	if rec := pressDenButton(w, "control", `{"id":"p1","op":"next"}`); rec.Code != http.StatusOK {
+	if rec := pressDenButton(w, "control", `{"id":"7","op":"next"}`); rec.Code != http.StatusOK {
 		t.Fatalf("next: %d %s", rec.Code, rec.Body)
 	}
 	if m.bodies[len(m.bodies)-2] != `{"action":"next"}` {
 		t.Fatalf("body was %s", m.bodies[len(m.bodies)-2])
 	}
-	if rec := pressDenButton(w, "control", `{"id":"p1","op":"volume"}`); rec.Code != http.StatusBadRequest {
+	if rec := pressDenButton(w, "control", `{"id":"7","op":"volume"}`); rec.Code != http.StatusBadRequest {
 		t.Fatal("only toggle, next and prev are allowed")
 	}
 }

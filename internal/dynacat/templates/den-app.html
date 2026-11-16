@@ -33,7 +33,7 @@
                 <div class="size-h6 color-subdue">{{ .Left }}</div>
             </div>
             {{- if .OnShoppingList }}
-            <span class="den-app-check color-positive size-h6">✓ on the list</span>
+            <span class="den-app-pill" title="Already on the shopping list">✓ Listed</span>
             {{- else }}
             <button type="button" class="den-app-button" data-den-action="add" data-id="{{ .ID }}" aria-label="Add {{ .Name }} to the shopping list">Add</button>
             {{- end }}
@@ -128,34 +128,46 @@
     {{- end }}
 
 {{- else if eq .App "wavelength" }}
-    {{- if not .Players }}
-    <p class="color-subdue">No players found.</p>
+    {{- $active := .ActivePlayers }}
+    {{- $idle := .IdlePlayers }}
+    {{- if and (not $active) (not $idle) }}
+    <p class="color-subdue">No devices have Wavelength open.</p>
     {{- end }}
-    <ul class="list list-gap-14">
-        {{- range .Players }}
-        <li class="den-app-player">
-            <div class="flex items-center gap-10">
-                <div class="min-width-0 grow">
-                    <div class="size-h6 color-subdue text-truncate">{{ .Name }}{{ if ne .State "playing" }} · {{ .State }}{{ end }}</div>
-                    {{- if .Title }}
-                    <div class="color-highlight text-truncate">{{ .Title }}</div>
-                    <div class="size-h6 text-truncate">{{ .Artist }}</div>
-                    {{- else }}
-                    <div class="color-subdue">Nothing queued</div>
+    <div class="den-wave-list">
+        {{- range $active }}
+        <div class="den-wave{{ if eq .State "playing" }} den-wave-playing{{ end }}">
+            <div class="den-wave-art" aria-hidden="true">
+                {{- if .Cover }}<img src="{{ .Cover }}" alt="" loading="lazy">{{ else }}<span>{{ if .IsRadio }}📻{{ else }}🎵{{ end }}</span>{{ end }}
+            </div>
+            <div class="den-wave-body min-width-0">
+                <div class="den-wave-device size-h6 text-truncate">
+                    {{- if eq .State "playing" }}<span class="den-wave-eq" aria-hidden="true"><i></i><i></i><i></i></span>{{ else }}⏸ {{ end }}{{ .Name }}{{ if .IsRadio }} · <span class="den-wave-live">LIVE</span>{{ end }}
+                </div>
+                <div class="den-wave-title color-highlight text-truncate" title="{{ .Song }}">{{ .Song }}</div>
+                <div class="size-h6 color-subdue text-truncate">{{ .By }}</div>
+                {{- if gt .Duration 0.0 }}
+                <div class="den-wave-time size-h6 color-subdue">
+                    <span>{{ .Elapsed }}</span>
+                    <div class="den-app-progress grow"><div style="width: {{ .Percent }}%"></div></div>
+                    <span>{{ .Length }}</span>
+                </div>
+                {{- end }}
+                <div class="den-app-controls flex gap-5">
+                    {{- if not .IsRadio }}
+                    <button type="button" class="den-app-icon-button" data-den-action="control" data-op="prev" data-id="{{ .ID }}" aria-label="Previous">⏮</button>
+                    {{- end }}
+                    <button type="button" class="den-app-icon-button den-wave-toggle" data-den-action="control" data-op="toggle" data-id="{{ .ID }}" aria-label="{{ if eq .State "playing" }}Pause{{ else }}Play{{ end }}">{{ if eq .State "playing" }}⏸{{ else }}▶{{ end }}</button>
+                    {{- if not .IsRadio }}
+                    <button type="button" class="den-app-icon-button" data-den-action="control" data-op="next" data-id="{{ .ID }}" aria-label="Next">⏭</button>
                     {{- end }}
                 </div>
-                <div class="den-app-controls flex gap-5 shrink-0">
-                    <button type="button" class="den-app-icon-button" data-den-action="control" data-op="prev" data-id="{{ .ID }}" aria-label="Previous">⏮</button>
-                    <button type="button" class="den-app-icon-button" data-den-action="control" data-op="toggle" data-id="{{ .ID }}" aria-label="{{ if eq .State "playing" }}Pause{{ else }}Play{{ end }}">{{ if eq .State "playing" }}⏸{{ else }}▶{{ end }}</button>
-                    <button type="button" class="den-app-icon-button" data-den-action="control" data-op="next" data-id="{{ .ID }}" aria-label="Next">⏭</button>
-                </div>
             </div>
-            {{- if .Duration }}
-            <div class="den-app-progress"><div style="width: {{ .Percent }}%"></div></div>
-            {{- end }}
-        </li>
+        </div>
         {{- end }}
-    </ul>
+    </div>
+    {{- if $idle }}
+    <p class="den-wave-idle size-h6 color-subdue text-truncate">Idle: {{ range $i, $p := $idle }}{{ if $i }}, {{ end }}{{ $p.Name }}{{ end }}</p>
+    {{- end }}
 {{- end }}
     <p class="den-app-error color-negative size-h6" role="status" hidden></p>
 </div>

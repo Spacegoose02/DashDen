@@ -2,6 +2,7 @@ package dynacat
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -100,14 +101,68 @@ func (r ninjaShoppingRow) Label() string {
 }
 
 type wavelengthPlayer struct {
-	ID       string  `json:"id"`
-	Name     string  `json:"name"`
-	State    string  `json:"state"`
-	Title    string  `json:"title"`
-	Artist   string  `json:"artist"`
-	Album    string  `json:"album"`
-	Position float64 `json:"position"`
-	Duration float64 `json:"duration"`
+	ID       json.Number `json:"id"` // Wavelength sends a number
+	Name     string      `json:"name"`
+	State    string      `json:"state"`
+	Title    string      `json:"title"`
+	Artist   string      `json:"artist"`
+	Album    string      `json:"album"`
+	Position float64     `json:"position"`
+	Duration float64     `json:"duration"`
+	// Wavelength 2026-11+: "radio" or "track", the song a station is
+	// playing now, and a picture (DashDen serves its own cached copy).
+	Kind  string `json:"kind"`
+	Live  string `json:"live"`
+	Cover string `json:"cover"`
+}
+
+// Song is what to show big: a station's current song, else the track.
+func (p wavelengthPlayer) Song() string {
+	if p.Live != "" {
+		if _, title, ok := strings.Cut(p.Live, " — "); ok {
+			return title
+		}
+		return p.Live
+	}
+	return p.Title
+}
+
+// By is the line under it: the station's current artist, else the artist.
+func (p wavelengthPlayer) By() string {
+	if p.Live != "" {
+		artist, _, ok := strings.Cut(p.Live, " — ")
+		station := p.Title
+		if ok {
+			return artist + " · " + station
+		}
+		return station
+	}
+	if p.Artist == "Live radio" {
+		return "Live radio"
+	}
+	return strings.Trim(p.Artist+" · "+p.Album, " ·")
+}
+
+func (p wavelengthPlayer) IsRadio() bool { return p.Kind == "radio" || p.Artist == "Live radio" }
+
+func (p wavelengthPlayer) Elapsed() string { return formatClock(p.Position) }
+func (p wavelengthPlayer) Length() string  { return formatClock(p.Duration) }
+
+func formatClock(sec float64) string {
+	s := int(sec)
+	if s >= 3600 {
+		return fmt.Sprintf("%d:%02d:%02d", s/3600, s%3600/60, s%60)
+	}
+	return fmt.Sprintf("%d:%02d", s/60, s%60)
+}
+
+// ActivePlayers are the ones with something loaded; IdlePlayers the rest.
+func (widget *denAppWidget) ActivePlayers() []wavelengthPlayer {
+	return slices.DeleteFunc(slices.Clone(widget.Players), func(p wavelengthPlayer) bool { return p.State == "idle" || p.Title == "" })
+}
+
+func (widget *denAppWidget) IdlePlayers() []wavelengthPlayer {
+	return slices.DeleteFunc(slices.Clone(widget.Players), func(p wavelengthPlayer) bool { return p.State != "idle" && p.Title != "" })
 }
 
 type wavelengthPlayersResponse struct {
@@ -224,6 +279,17 @@ func (widget *denAppWidget) update(ctx context.Context) {
 		var res wavelengthPlayersResponse
 		res, err = fetchDenApp[wavelengthPlayersResponse](ctx, widget, "/api/ha/players")
 		if err == nil {
+			// Playing first, then paused.
+			slices.SortStableFunc(res.Players, func(a, b wavelengthPlayer) int {
+				return cmp.Compare(ternary(a.State == "playing", 0, 1), ternary(b.State == "playing", 0, 1))
+			})
+			for i := range res.Players {
+				if res.Players[i].Cover != "" && widget.Providers != nil {
+					res.Players[i].Cover = widget.Providers.SecureImageURL(ctx, res.Players[i].Cover, widget.AllowInsecure)
+				} else {
+					res.Players[i].Cover = ""
+				}
+			}
 			widget.Players = res.Players
 		}
 	}
