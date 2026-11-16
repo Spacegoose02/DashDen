@@ -51,6 +51,8 @@ func friendlyWidgetError(err error) string {
 var (
 	friendlyGotStatusPattern = regexp.MustCompile(`\bgot ([1-5]\d\d)\b`)
 	friendlyStatusPattern    = regexp.MustCompile(`\b(?:status(?: code)?:?\s*"?|returned\s*)([1-5]\d\d)\b`)
+	// custom-api reports a failed request as just "401 Unauthorized".
+	friendlyBareStatusPattern = regexp.MustCompile(`^([1-5]\d\d) [a-z]`)
 )
 
 // friendlyStatus finds the HTTP status in an error, preferring the one a
@@ -60,6 +62,9 @@ func friendlyStatus(msg string) string {
 		return m[1]
 	}
 	if m := friendlyStatusPattern.FindStringSubmatch(msg); m != nil && m[1] != "200" {
+		return m[1]
+	}
+	if m := friendlyBareStatusPattern.FindStringSubmatch(msg); m != nil && m[1] != "200" {
 		return m[1]
 	}
 	return ""
