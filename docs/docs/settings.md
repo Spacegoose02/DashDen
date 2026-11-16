@@ -24,6 +24,12 @@ Add, edit and remove [household](household.md) members: username, name, avatar (
 
 If password sign-in is in use, you can also set a person's password here. Only a bcrypt hash is written to the config (`auth.users.<username>.password-hash`). If the config has no `auth.secret-key` yet, one is generated, saved as `DASHDEN_AUTH_SECRET` in `config/.env`, and referred to as `${DASHDEN_AUTH_SECRET}`.
 
+### Changing a username
+
+To fix a misspelled username, open the person with **Edit**, change **Username** and save. DashDen renames them everywhere at once: their household profile, their password entry, every `allowed-users`, `editing-users`, `action-groups`, `approve-groups` and `post-groups` list in the config and the files it includes, their saved theme, their notice board notes and their per-person to-do lists. Usernames ignore capital letters, so `Sam` and `sam` count as the same name, and a name someone else already uses is refused. You can also change just the capitals.
+
+If you rename yourself you stay signed in. Anyone else who signs in with a password uses the new name next time. If the person signs in through Tinyauth or another sign-in service, the username comes from there, so change it in that service too.
+
 To stop you locking yourself out, Settings won't let you remove yourself or take admin away from yourself.
 
 ## Sign-in
