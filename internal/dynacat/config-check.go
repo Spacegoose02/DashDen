@@ -428,25 +428,31 @@ func closestConfigKey(key string, known map[string]reflect.Type) string {
 	return best
 }
 
+// levenshtein is the edit distance with two swapped letters counting as one
+// typo, so "titel" is closer to "title" than to "tile".
 func levenshtein(a, b string) int {
 	ar, br := []rune(a), []rune(b)
-	prev := make([]int, len(br)+1)
-	cur := make([]int, len(br)+1)
-	for j := range prev {
-		prev[j] = j
+	d := make([][]int, len(ar)+1)
+	for i := range d {
+		d[i] = make([]int, len(br)+1)
+		d[i][0] = i
+	}
+	for j := range d[0] {
+		d[0][j] = j
 	}
 	for i := 1; i <= len(ar); i++ {
-		cur[0] = i
 		for j := 1; j <= len(br); j++ {
 			cost := 1
 			if ar[i-1] == br[j-1] {
 				cost = 0
 			}
-			cur[j] = min(prev[j]+1, cur[j-1]+1, prev[j-1]+cost)
+			d[i][j] = min(d[i-1][j]+1, d[i][j-1]+1, d[i-1][j-1]+cost)
+			if i > 1 && j > 1 && ar[i-1] == br[j-2] && ar[i-2] == br[j-1] {
+				d[i][j] = min(d[i][j], d[i-2][j-2]+1)
+			}
 		}
-		prev, cur = cur, prev
 	}
-	return prev[len(br)]
+	return d[len(ar)][len(br)]
 }
 
 // missingConfigVariables lists the ${VARIABLES} the config uses that aren't
