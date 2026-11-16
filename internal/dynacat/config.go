@@ -130,6 +130,7 @@ type user struct {
 	PasswordHash       []byte   `yaml:"-"`
 	RestrictEditing    []string `yaml:"restrict-editing"`
 	usernameHash       []byte   `yaml:"-"`
+	credential         string   // DashDen: what usernameHash mixes in, so a rename can keep the session (settings-rename.go)
 }
 
 type page struct {

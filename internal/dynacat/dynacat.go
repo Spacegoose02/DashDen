@@ -150,6 +150,7 @@ func newApplication(c *config) (*application, error) {
 				return nil, fmt.Errorf("computing username hash for user %s: %v", username, err)
 			}
 			user.usernameHash = usernameHash
+			user.credential = credential // DashDen: settings-rename.go
 			app.usernameHashToUsername[string(usernameHash)] = username
 
 			if user.PasswordHashString != "" {
