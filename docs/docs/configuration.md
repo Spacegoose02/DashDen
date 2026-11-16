@@ -650,6 +650,8 @@ pages:
 | `2x2` or `big` | Two columns, two tile heights |
 | `WxH` | Any width and height from 1 to 4 |
 
+A widget without a `tile` can take its size from its `css-class` instead: `bento-s` (1x1), `bento-w` (2x1), `bento-t` (1x2) or `bento-l` (2x2). The family app widget files use these, so they size themselves on a bento page. A `tile` on the widget wins over its class.
+
 A tile with a height scrolls its content if it doesn't fit. On phones every tile is one column and as tall as its content. In the editor, a bento page shows its widgets on the grid; drag them to reorder and press the size button on a card to change its tile.
 
 #### `desktop-navigation-width`
