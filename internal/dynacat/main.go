@@ -2,10 +2,7 @@ package dynacat
 
 import (
 	"fmt"
-	"io"
 	"log/slog"
-	"net/http"
-	"os"
 	"path/filepath"
 	"sync"
 
@@ -30,8 +27,6 @@ func Main() int {
 		}
 	}
 
-	options.configPath = resolveConfigPath(options.configPath)
-
 	if err := loadManagedSecrets(options.configPath); err != nil {
 		slog.Error("Failed to load secrets saved from Settings", "error", err)
 		return 1
@@ -41,11 +36,6 @@ func Main() int {
 	case cliIntentVersionPrint:
 		fmt.Println(buildVersion)
 	case cliIntentServe:
-		// remove in v0.10.0
-		if serveUpdateNoticeIfConfigLocationNotMigrated(options.configPath) {
-			return 1
-		}
-
 		if err := serveFirstRunSetupIfNoConfig(options.configPath); err != nil {
 			slog.Error("First run setup failed", "error", err)
 			return 1
@@ -104,24 +94,6 @@ func Main() int {
 	}
 
 	return 0
-}
-
-func resolveConfigPath(primaryPath string) string {
-	if stat, err := os.Stat(primaryPath); err == nil && !stat.IsDir() && stat.Size() > 0 {
-		return primaryPath
-	}
-
-	if filepath.Base(primaryPath) != "dynacat.yml" {
-		return primaryPath
-	}
-
-	glancePath := filepath.Join(filepath.Dir(primaryPath), "glance.yml")
-	if stat, err := os.Stat(glancePath); err == nil && !stat.IsDir() && stat.Size() > 0 {
-		slog.Warn("Using legacy glance.yml config file. Please rename it to dynacat.yml to avoid deprecation issues")
-		return glancePath
-	}
-
-	return primaryPath
 }
 
 func serveApp(configPath string) error {
@@ -268,41 +240,4 @@ func serveApp(configPath string) error {
 
 	<-exitChannel
 	return nil
-}
-
-func serveUpdateNoticeIfConfigLocationNotMigrated(configPath string) bool {
-	if !isRunningInsideDockerContainer() {
-		return false
-	}
-
-	if _, err := os.Stat(configPath); err == nil {
-		return false
-	}
-
-	if stat, err := os.Stat("dynacat.yml"); err != nil || stat.IsDir() {
-		return false
-	}
-
-	templateFile, _ := templateFS.Open("v0.7-update-notice-page.html")
-	bodyContents, _ := io.ReadAll(templateFile)
-
-	fmt.Println("!!! WARNING !!!")
-	fmt.Println("The default location of dynacat.yml in the Docker image has changed starting from v0.7.0.")
-	fmt.Println("Please see https://github.com/Panonim/dynacat/blob/main/docs/docs/installation.md#coming-from-glance for more information.")
-
-	mux := http.NewServeMux()
-	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.FS(staticFS))))
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html")
-		w.WriteHeader(http.StatusServiceUnavailable)
-		w.Write([]byte(bodyContents))
-	})
-
-	server := http.Server{
-		Addr:    ":8080",
-		Handler: mux,
-	}
-	server.ListenAndServe()
-
-	return true
 }
