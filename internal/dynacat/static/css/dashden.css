@@ -3,3 +3,74 @@
 .logo img.logo-default {
     max-height: 3.6rem;
 }
+
+/* Placeholder for a widget whose data is still on its way. */
+.widget-skeleton {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding-block: 0.4rem;
+}
+
+.widget-skeleton span {
+    display: block;
+    height: 1.1rem;
+    border-radius: 0.6rem;
+    background: linear-gradient(90deg,
+        var(--color-widget-content-border) 0%,
+        var(--color-separator, var(--color-widget-content-border)) 40%,
+        var(--color-widget-content-border) 80%);
+    background-size: 300% 100%;
+    animation: widget-skeleton-shimmer 1.6s ease-in-out infinite;
+    opacity: 0.7;
+}
+
+.widget-skeleton span:nth-child(1) { width: 92%; }
+.widget-skeleton span:nth-child(2) { width: 76%; }
+.widget-skeleton span:nth-child(3) { width: 58%; }
+
+@keyframes widget-skeleton-shimmer {
+    from { background-position: 100% 0; }
+    to { background-position: -100% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .widget-skeleton span { animation: none; }
+}
+
+/* A widget that couldn't load: a calm one-line reason, details on demand. */
+.widget-error-friendly {
+    display: flex;
+    gap: 1.2rem;
+    align-items: flex-start;
+    padding: 1.2rem 1.4rem;
+    border-radius: var(--border-radius);
+    background: color-mix(in srgb, var(--color-negative) 7%, transparent);
+}
+
+.widget-error-friendly .widget-error-icon {
+    flex-shrink: 0;
+    width: 2rem;
+    height: 2rem;
+    stroke: var(--color-negative);
+    margin-top: 0.1rem;
+}
+
+.widget-error-reason {
+    color: var(--color-text-highlight);
+}
+
+.widget-error-details {
+    margin-top: 0.6rem;
+    font-size: var(--font-size-h6);
+    color: var(--color-text-subdue);
+}
+
+.widget-error-details summary {
+    cursor: pointer;
+    width: fit-content;
+}
+
+.widget-error-details p {
+    margin-top: 0.4rem;
+}

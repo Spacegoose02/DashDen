@@ -636,6 +636,7 @@ type templateData struct {
 	AuthUser        *authenticatedUser
 	AccessiblePages []*page
 	OIDCError       string
+	lateWidgets     map[uint64]bool
 }
 
 func (a *application) populateTemplateRequestData(data *templateRequestData, r *http.Request, user *authenticatedUser) {
@@ -738,9 +739,17 @@ func (a *application) handlePageContentRequest(w http.ResponseWriter, r *http.Re
 
 	func() {
 		page.mu.Lock()
-		defer page.mu.Unlock()
 
-		page.updateOutdatedWidgets()
+		// DashDen: answer within a few seconds, see page-progressive.go.
+		done, late := page.updateWidgetsWithin(pageWidgetWait)
+		defer func() {
+			go func() {
+				<-done
+				page.mu.Unlock()
+			}()
+		}()
+
+		pageData.lateWidgets = late
 		if a.imageCache != nil {
 			isCacheBuilding = a.imageCache.IsBuildingCache()
 		}
@@ -858,7 +867,10 @@ func (a *application) handleWidgetContentRequest(w http.ResponseWriter, r *http.
 	page.mu.Lock()
 	defer page.mu.Unlock()
 
-	widget.update(context.Background())
+	// DashDen: a placeholder's update finished while we waited for the lock.
+	if !takeStillLoading(widgetID) {
+		widget.update(context.Background())
+	}
 
 	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")

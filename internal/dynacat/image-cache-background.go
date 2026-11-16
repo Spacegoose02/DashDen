@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/url"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
@@ -14,6 +15,10 @@ import (
 // from its original URL and downloaded in the background for next time.
 
 var iconDownloadSlots = make(chan struct{}, 4)
+
+// backgroundIconDownloads counts downloads started here, which
+// IsBuildingCache leaves out.
+var backgroundIconDownloads atomic.Int64
 
 // cachedImageURL returns the local copy of rawURL if one is on disk,
 // without touching the network.
@@ -40,6 +45,8 @@ func (c *imageCache) cacheIconInBackground(rawURL string) {
 	go func() {
 		iconDownloadSlots <- struct{}{}
 		defer func() { <-iconDownloadSlots }()
+		backgroundIconDownloads.Add(1)
+		defer backgroundIconDownloads.Add(-1)
 
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
