@@ -1178,6 +1178,8 @@ func (a *application) server() (func() error, func() error) {
 	mux.Handle(fmt.Sprintf("GET /static/%s/css/bundle.css", getStaticFSHash()), serveCSSBundle(bundledCSSContents))
 	mux.Handle(fmt.Sprintf("GET /static/%s/css/editor-bundle.css", getStaticFSHash()), serveCSSBundle(bundledEditorCSSContents))
 
+	a.registerPWARoutes(mux) // DashDen: pwa.go
+
 	mux.HandleFunc("GET /manifest.json", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("Cache-Control", assetCacheControlValue)
 		w.Header().Add("Content-Type", "application/json")
