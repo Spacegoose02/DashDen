@@ -34,6 +34,14 @@ const AUTH_TOKEN_DATA_LENGTH = AUTH_USERNAME_HASH_LENGTH + AUTH_TIMESTAMP_LENGTH
 const AUTH_TOKEN_VALID_PERIOD = 14 * 24 * time.Hour
 const AUTH_TOKEN_REGEN_BEFORE = 7 * 24 * time.Hour
 
+// "Stay signed in" sessions last this long without a visit, and are renewed
+// while they're used, so a wall tablet stays signed in indefinitely.
+const AUTH_REMEMBER_VALID_PERIOD = 90 * 24 * time.Hour
+const AUTH_REMEMBER_REGEN_BEFORE = 60 * 24 * time.Hour
+
+// Set in a token's expiry field when it was made with "Stay signed in".
+const authRememberFlag = uint64(1) << 62
+
 var loginPageTemplate = mustParseTemplate("login.html", "document.html", "footer.html")
 
 type authenticatedUser struct {
@@ -67,6 +75,10 @@ type failedAuthAttempt struct {
 }
 
 func generateSessionToken(usernameHash []byte, secret []byte, now time.Time) (string, error) {
+	return generateSessionTokenFor(usernameHash, secret, now, false)
+}
+
+func generateSessionTokenFor(usernameHash []byte, secret []byte, now time.Time, remember bool) (string, error) {
 	if len(secret) != AUTH_SECRET_KEY_LENGTH {
 		return "", fmt.Errorf("secret key length is not %d bytes", AUTH_SECRET_KEY_LENGTH)
 	}
@@ -77,8 +89,12 @@ func generateSessionToken(usernameHash []byte, secret []byte, now time.Time) (st
 
 	data := make([]byte, AUTH_TOKEN_DATA_LENGTH)
 	copy(data, usernameHash)
-	expires := now.Add(AUTH_TOKEN_VALID_PERIOD).Unix()
-	binary.LittleEndian.PutUint64(data[AUTH_USERNAME_HASH_LENGTH:], uint64(expires))
+	period, flag := AUTH_TOKEN_VALID_PERIOD, uint64(0)
+	if remember {
+		period, flag = AUTH_REMEMBER_VALID_PERIOD, authRememberFlag
+	}
+	expires := now.Add(period).Unix()
+	binary.LittleEndian.PutUint64(data[AUTH_USERNAME_HASH_LENGTH:], uint64(expires)|flag)
 
 	h := hmac.New(sha256.New, secret[0:AUTH_TOKEN_SECRET_LENGTH])
 	h.Write(data)
@@ -104,17 +120,24 @@ func computeUsernameHash(username string, credential string, secret []byte) ([]b
 }
 
 func verifySessionToken(token string, secretBytes []byte, now time.Time) ([]byte, bool, error) {
+	hash, regen, _, err := verifySessionTokenFor(token, secretBytes, now)
+	return hash, regen, err
+}
+
+// verifySessionTokenFor also reports whether the token was made with "Stay
+// signed in".
+func verifySessionTokenFor(token string, secretBytes []byte, now time.Time) ([]byte, bool, bool, error) {
 	tokenBytes, err := base64.StdEncoding.DecodeString(token)
 	if err != nil {
-		return nil, false, err
+		return nil, false, false, err
 	}
 
 	if len(tokenBytes) != AUTH_TOKEN_DATA_LENGTH+32 {
-		return nil, false, fmt.Errorf("token length is invalid")
+		return nil, false, false, fmt.Errorf("token length is invalid")
 	}
 
 	if len(secretBytes) != AUTH_SECRET_KEY_LENGTH {
-		return nil, false, fmt.Errorf("secret key length is not %d bytes", AUTH_SECRET_KEY_LENGTH)
+		return nil, false, false, fmt.Errorf("secret key length is not %d bytes", AUTH_SECRET_KEY_LENGTH)
 	}
 
 	usernameHashBytes := tokenBytes[0:AUTH_USERNAME_HASH_LENGTH]
@@ -126,16 +149,23 @@ func verifySessionToken(token string, secretBytes []byte, now time.Time) ([]byte
 	expectedSignatureBytes := h.Sum(nil)
 
 	if !hmac.Equal(expectedSignatureBytes, providedSignatureBytes) {
-		return nil, false, fmt.Errorf("signature does not match")
+		return nil, false, false, fmt.Errorf("signature does not match")
 	}
 
-	expiresTimestamp := int64(binary.LittleEndian.Uint64(timestampBytes))
+	rawExpires := binary.LittleEndian.Uint64(timestampBytes)
+	remember := rawExpires&authRememberFlag != 0
+	expiresTimestamp := int64(rawExpires &^ authRememberFlag)
 	if now.Unix() > expiresTimestamp {
-		return nil, false, fmt.Errorf("token has expired")
+		return nil, false, false, fmt.Errorf("token has expired")
 	}
 
+	regenBefore := AUTH_TOKEN_REGEN_BEFORE
+	if remember {
+		regenBefore = AUTH_REMEMBER_REGEN_BEFORE
+	}
 	return usernameHashBytes,
-		time.Unix(expiresTimestamp, 0).Add(-AUTH_TOKEN_REGEN_BEFORE).Before(now),
+		time.Unix(expiresTimestamp, 0).Add(-regenBefore).Before(now),
+		remember,
 		nil
 }
 
@@ -175,6 +205,7 @@ func (a *application) handleAuthenticationAttempt(w http.ResponseWriter, r *http
 	var creds struct {
 		Username string `json:"username"`
 		Password string `json:"password"`
+		Remember bool   `json:"remember"`
 	}
 
 	err = json.Unmarshal(body, &creds)
@@ -200,22 +231,26 @@ func (a *application) handleAuthenticationAttempt(w http.ResponseWriter, r *http
 		return
 	}
 
-	u, exists := a.Config.Auth.Users[creds.Username]
-	if !exists {
+	refuse := func() {
 		logAuthFailure()
 		time.Sleep(waitOnFailure)
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]int{"triesLeft": a.authAttemptsLeft(ip)})
+	}
+
+	_, u := a.findPasswordUser(creds.Username)
+	if u == nil {
+		refuse()
 		return
 	}
 
 	if err := bcrypt.CompareHashAndPassword(u.PasswordHash, []byte(creds.Password)); err != nil {
-		logAuthFailure()
-		time.Sleep(waitOnFailure)
-		w.WriteHeader(http.StatusUnauthorized)
+		refuse()
 		return
 	}
 
-	token, err := generateSessionToken(u.usernameHash, a.authSecretKey, time.Now())
+	token, err := generateSessionTokenFor(u.usernameHash, a.authSecretKey, time.Now(), creds.Remember)
 	if err != nil {
 		slog.Error("Could not compute session token during login attempt", "error", err)
 		time.Sleep(waitOnFailure)
@@ -223,7 +258,7 @@ func (a *application) handleAuthenticationAttempt(w http.ResponseWriter, r *http
 		return
 	}
 
-	a.setAuthSessionCookie(w, r, token, time.Now().Add(AUTH_TOKEN_VALID_PERIOD))
+	a.setSessionCookie(w, r, token, creds.Remember)
 
 	a.clearAuthRateLimit(ip)
 
@@ -261,6 +296,32 @@ func (a *application) checkAuthRateLimit(ip string) (bool, int) {
 	return false, 0
 }
 
+// authAttemptsLeft is how many more tries the IP has before it has to wait.
+func (a *application) authAttemptsLeft(ip string) int {
+	a.authAttemptsMu.Lock()
+	defer a.authAttemptsMu.Unlock()
+	attempt, ok := a.failedAuthAttempts[ip]
+	if !ok {
+		return AUTH_RATE_LIMIT_MAX_ATTEMPTS
+	}
+	return max(0, AUTH_RATE_LIMIT_MAX_ATTEMPTS-attempt.attempts)
+}
+
+// findPasswordUser looks a sign-in name up without caring about capital
+// letters, and returns the name as the config spells it.
+func (a *application) findPasswordUser(name string) (string, *user) {
+	name = strings.TrimSpace(name)
+	if u, ok := a.Config.Auth.Users[name]; ok {
+		return name, u
+	}
+	for configured, u := range a.Config.Auth.Users {
+		if strings.EqualFold(configured, name) {
+			return configured, u
+		}
+	}
+	return "", nil
+}
+
 // Drops the IP's counter after a successful login so valid callers are never throttled.
 func (a *application) clearAuthRateLimit(ip string) {
 	a.authAttemptsMu.Lock()
@@ -279,8 +340,8 @@ func (a *application) verifyUserPassword(username, password string) *authenticat
 		return nil
 	}
 
-	u, exists := a.Config.Auth.Users[username]
-	if !exists {
+	username, u := a.findPasswordUser(username)
+	if u == nil {
 		return nil
 	}
 
@@ -303,17 +364,17 @@ func (a *application) getSignedInUser(w http.ResponseWriter, r *http.Request) *a
 	if a.PasswordEnabled && len(a.Config.Auth.Users) > 0 {
 		token, err := r.Cookie(AUTH_SESSION_COOKIE_NAME)
 		if err == nil && token.Value != "" {
-			usernameHash, shouldRegenerate, err := verifySessionToken(token.Value, a.authSecretKey, time.Now())
+			usernameHash, shouldRegenerate, remember, err := verifySessionTokenFor(token.Value, a.authSecretKey, time.Now())
 			if err == nil {
 				username, exists := a.usernameHashToUsername[string(usernameHash)]
 				if exists {
 					if u, exists := a.Config.Auth.Users[username]; exists {
 						if shouldRegenerate {
-							newToken, err := generateSessionToken(u.usernameHash, a.authSecretKey, time.Now())
+							newToken, err := generateSessionTokenFor(u.usernameHash, a.authSecretKey, time.Now(), remember)
 							if err != nil {
 								slog.Error("Could not compute session token during regeneration", "error", err)
 							} else {
-								a.setAuthSessionCookie(w, r, newToken, time.Now().Add(AUTH_TOKEN_VALID_PERIOD))
+								a.setSessionCookie(w, r, newToken, remember)
 							}
 						}
 						return &authenticatedUser{Username: username, IsOIDC: false}
@@ -550,6 +611,16 @@ func (a *application) oidcProviderLogoutURL(session *oidcSession, loggedOutPath 
 
 	endSessionURL.RawQuery = query.Encode()
 	return endSessionURL.String()
+}
+
+// setSessionCookie keeps the cookie across browser restarts only with "Stay
+// signed in"; otherwise it ends when the browser closes.
+func (a *application) setSessionCookie(w http.ResponseWriter, r *http.Request, token string, remember bool) {
+	var expires time.Time
+	if remember {
+		expires = time.Now().Add(AUTH_REMEMBER_VALID_PERIOD)
+	}
+	a.setAuthSessionCookie(w, r, token, expires)
 }
 
 func (a *application) setAuthSessionCookie(w http.ResponseWriter, r *http.Request, token string, expires time.Time) {

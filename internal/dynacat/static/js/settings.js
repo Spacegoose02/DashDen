@@ -96,7 +96,6 @@ function openPersonForm(person) {
     f.role.replaceChildren(...["", ...peopleData.roles].map((r) => option(r, roleLabels[r] || r)));
     f.home.replaceChildren(option("", "The first page"), ...peopleData.pages.map((p) => option(p.value, p.label)));
     f.theme.replaceChildren(option("", "Their own choice"), ...peopleData.themes.map((t) => option(t.value, t.label)));
-    document.getElementById("person-password-field").hidden = !peopleData.passwordSignIn;
     if (person) {
         f.username.value = person.username;
         f.name.value = person.name || "";
@@ -674,6 +673,7 @@ async function loadOverview() {
         const o = await call("GET", "/overview");
         renderSetup(o);
         const rows = [
+            ...(o.configError ? [["Config problem", "Your latest change wasn't applied, DashDen is still running the one before it: " + o.configError]] : []),
             ["Sign-in", o.signIn.length ? o.signIn.join(", ") : "None, anyone who can reach DashDen can see it"],
             ["Household", o.members ? `${o.members} people, admins: ${o.admins.length ? o.admins.join(", ") : "none yet"}` : "No household profiles yet"],
             ["Pages", String(o.pages)],

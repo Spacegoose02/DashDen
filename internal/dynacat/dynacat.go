@@ -3,7 +3,6 @@ package dynacat
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -117,13 +116,9 @@ func newApplication(c *config) (*application, error) {
 
 	hasAnyAuth := len(config.Auth.Users) > 0 || config.Auth.OIDC != nil
 	if hasAnyAuth {
-		secretBytes, err := base64.StdEncoding.DecodeString(config.Auth.SecretKey)
+		secretBytes, err := resolveAuthSecretKey(config.Auth.SecretKey)
 		if err != nil {
-			return nil, fmt.Errorf("decoding secret-key: %v", err)
-		}
-
-		if len(secretBytes) != AUTH_SECRET_KEY_LENGTH {
-			return nil, fmt.Errorf("secret-key must be exactly %d bytes", AUTH_SECRET_KEY_LENGTH)
+			return nil, err
 		}
 
 		app.authSecretKey = secretBytes
