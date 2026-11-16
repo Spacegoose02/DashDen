@@ -33,7 +33,7 @@ func newNoticeStorage(path string) *noticeStorage {
 
 func (s *noticeStorage) init() error {
 	s.once.Do(func() {
-		db, err := sql.Open("sqlite", s.path)
+		db, err := openSQLite(s.path)
 		if err != nil {
 			s.err = fmt.Errorf("opening sqlite db: %w", err)
 			return

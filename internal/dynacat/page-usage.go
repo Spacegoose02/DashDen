@@ -34,7 +34,7 @@ func (s *pageUsageStorage) setPath(path string) {
 	}
 	s.path = path
 
-	db, err := sql.Open("sqlite", path)
+	db, err := openSQLite(path)
 	if err != nil {
 		slog.Warn("Page use won't be counted", "error", err)
 		return

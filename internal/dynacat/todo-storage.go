@@ -26,7 +26,7 @@ func newTodoStorage(path string) *todoStorage {
 
 func (s *todoStorage) init() error {
 	s.once.Do(func() {
-		db, err := sql.Open("sqlite", s.path)
+		db, err := openSQLite(s.path)
 		if err != nil {
 			s.err = fmt.Errorf("opening sqlite db: %w", err)
 			return

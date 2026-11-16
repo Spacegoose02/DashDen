@@ -143,7 +143,11 @@ async function commit(mutation) {
         return false;
     }
 
-    if (res.status === 204) return true;
+    if (res.status === 204) {
+        const undoID = res.headers.get("X-DashDen-Undo");
+        if (undoID) offerUndo(undoID);
+        return true;
+    }
 
     const body = await res.json().catch(() => ({}));
     logFailure(`save "${mutation.op}" was rejected`, {
@@ -152,6 +156,38 @@ async function commit(mutation) {
     });
     toast(body.error || "Save failed", "negative");
     return false;
+}
+
+// DashDen: a short-lived Undo for the change just saved (editor-undo.go).
+let undoToast = null;
+
+function offerUndo(id) {
+    undoToast?.remove();
+    let container = document.querySelector(".editor-toasts");
+    if (!container) {
+        container = div("editor-ui editor-toasts");
+        document.body.append(container);
+    }
+    const el = div("editor-toast editor-toast-undo", "Saved");
+    const undoBtn = button("Undo", "editor-toast-action");
+    undoBtn.addEventListener("click", async () => {
+        undoBtn.disabled = true;
+        undoBtn.textContent = "Undoing…";
+        const before = await serverGeneration();
+        try {
+            await apiPost("/undo", { id });
+        } catch (err) {
+            el.remove();
+            toast(err.message || "Undo failed", "negative");
+            return;
+        }
+        await waitForServerReload(before);
+        window.location.reload();
+    });
+    el.append(undoBtn);
+    container.append(el);
+    undoToast = el;
+    setTimeout(() => { if (undoToast === el && !undoBtn.disabled) { el.remove(); undoToast = null; } }, 10000);
 }
 
 async function save(mutation) {
