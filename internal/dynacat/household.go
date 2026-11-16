@@ -46,8 +46,11 @@ func validateHousehold(cfg *config) error {
 			return fmt.Errorf("household member %q: role must be one of %s, got %q", username, strings.Join(householdRoles, ", "), m.Role)
 		}
 		if m.Theme != "" && m.Theme != "default" {
-			if _, ok := cfg.Theme.Presets.Get(m.Theme); !ok {
-				return fmt.Errorf("household member %q: theme %q is not a preset", username, m.Theme)
+			_, ok := cfg.Theme.Presets.Get(m.Theme)
+			// DashDen: built-in themes are added after the config loads.
+			ok = ok || (isBuiltinThemeKey(m.Theme) && (cfg.Theme.BuiltinThemes == nil || *cfg.Theme.BuiltinThemes))
+			if !ok {
+				return fmt.Errorf("household member %q: theme %q is not a preset or built-in theme", username, m.Theme)
 			}
 		}
 	}

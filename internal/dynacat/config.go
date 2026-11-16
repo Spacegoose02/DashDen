@@ -76,6 +76,7 @@ type config struct {
 		CustomCSSFile   string `yaml:"custom-css-file"`
 
 		DisablePicker bool                                     `yaml:"disable-picker"`
+		BuiltinThemes *bool                                    `yaml:"builtin-themes"` // DashDen
 		Presets       orderedYAMLMap[string, *themeProperties] `yaml:"presets"`
 		Seasonal      []seasonalTheme                          `yaml:"seasonal"`
 	} `yaml:"theme"`
@@ -137,6 +138,7 @@ type page struct {
 	Slug                   string          `yaml:"slug"`
 	DynamicUpdates         *bool           `yaml:"dynamic-updates"`
 	Width                  string          `yaml:"width"`
+	Layout                 string          `yaml:"layout"` // DashDen: page-bento.go
 	DesktopNavigationWidth string          `yaml:"desktop-navigation-width"`
 	ShowMobileHeader       bool            `yaml:"show-mobile-header"`
 	HideDesktopNavigation  bool            `yaml:"hide-desktop-navigation"`
@@ -704,8 +706,12 @@ func isConfigStateValid(config *config) error {
 			return fmt.Errorf("page %d has no name", i+1)
 		}
 
-		if page.Width != "" && (page.Width != "wide" && page.Width != "slim" && page.Width != "default") {
-			return fmt.Errorf("page %d: width can only be either wide or slim", i+1)
+		if page.Width != "" && (page.Width != "wide" && page.Width != "slim" && page.Width != "default" && page.Width != "full") {
+			return fmt.Errorf("page %d: width can only be wide, full or slim", i+1)
+		}
+
+		if err := validatePageLayout(page, i+1); err != nil { // DashDen
+			return err
 		}
 
 		if page.DesktopNavigationWidth != "" {

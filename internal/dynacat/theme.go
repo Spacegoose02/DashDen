@@ -52,14 +52,28 @@ type themeProperties struct {
 	Light                    bool           `yaml:"light"`
 	ContrastMultiplier       float32        `yaml:"contrast-multiplier"`
 	TextSaturationMultiplier float32        `yaml:"text-saturation-multiplier"`
+	// DashDen: see theme-styles.go
+	Name      string `yaml:"name"`
+	Style     string `yaml:"style"`
+	Wallpaper string `yaml:"wallpaper"`
 
 	Key                  string        `yaml:"-"`
 	CSS                  template.CSS  `yaml:"-"`
 	PreviewHTML          template.HTML `yaml:"-"`
+	StyleCSS             template.CSS  `yaml:"-"`
 	BackgroundColorAsHex string        `yaml:"-"`
 }
 
 func (t *themeProperties) init() error {
+	if t.Name == "" && t.Key != "" {
+		t.Name = themeNameFromKey(t.Key)
+	}
+	styleCSS, err := t.styleCSS()
+	if err != nil {
+		return err
+	}
+	t.StyleCSS = styleCSS
+
 	css, err := executeTemplateToString(themeStyleTemplate, t)
 	if err != nil {
 		return fmt.Errorf("compiling theme style: %v", err)
@@ -95,6 +109,9 @@ func (t1 *themeProperties) SameAs(t2 *themeProperties) bool {
 		return false
 	}
 	if t1.TextSaturationMultiplier != t2.TextSaturationMultiplier {
+		return false
+	}
+	if t1.Style != t2.Style || t1.Wallpaper != t2.Wallpaper {
 		return false
 	}
 	if !t1.BackgroundColor.SameAs(t2.BackgroundColor) {
@@ -140,6 +157,13 @@ func (a *application) profileTheme(user *authenticatedUser) (*themeProperties, b
 
 	if m := user.Member(); m != nil && m.Theme != "" {
 		return a.themeByKey(m.Theme)
+	}
+
+	// DashDen: kids start on a kid theme.
+	if m := user.Member(); m != nil && m.Role == householdRoleKid {
+		if theme, ok := a.themeByKey(kidsDefaultTheme); ok {
+			return theme, true
+		}
 	}
 
 	return nil, false
