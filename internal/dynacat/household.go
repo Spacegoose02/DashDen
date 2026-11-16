@@ -93,12 +93,14 @@ func (a *application) withHousehold(u *authenticatedUser) *authenticatedUser {
 		return nil
 	}
 
-	m, ok := a.Config.Household.Members[u.Username]
-	if !ok {
+	username, m := a.findHouseholdMember(u.Username)
+	if m == nil {
 		return u
 	}
 
 	enriched := *u
+	// Sign-in names ignore capital letters; use the spelling the household has.
+	enriched.Username = username
 	enriched.member = m
 	if m.Name != "" {
 		enriched.Name = m.Name
@@ -141,4 +143,18 @@ func (a *application) redirectToHomePage(w http.ResponseWriter, r *http.Request,
 	}
 	http.Redirect(w, r, target, http.StatusSeeOther)
 	return true
+}
+
+// findHouseholdMember looks a username up without caring about capital letters
+// and returns the name as the household spells it.
+func (a *application) findHouseholdMember(name string) (string, *householdMember) {
+	if m, ok := a.Config.Household.Members[name]; ok {
+		return name, m
+	}
+	for configured, m := range a.Config.Household.Members {
+		if strings.EqualFold(configured, name) {
+			return configured, m
+		}
+	}
+	return "", nil
 }

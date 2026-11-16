@@ -31,8 +31,8 @@ if (usernameInput && passwordInput && loginButton) {
     const lang = {
         showPassword: "Show password",
         hidePassword: "Hide password",
-        incorrectCredentials: "Incorrect username or password",
-        rateLimited: "Too many login attempts, try again in a few minutes",
+        incorrectCredentials: "Wrong username or password",
+        rateLimited: "Too many tries from this device. You can try again in",
         unknownError: "An error occurred, please try again",
     };
 
@@ -131,19 +131,34 @@ if (usernameInput && passwordInput && loginButton) {
                 options: { duration: 300, easing: "ease", fill: "forwards", delay: 50 }
             });
         } else if (response.status === 401) {
-            errorMessage.text(lang.incorrectCredentials);
+            let triesLeft = null;
+            try { triesLeft = (await response.json()).triesLeft; } catch (_) {}
+            if (typeof triesLeft === "number" && triesLeft <= 3) {
+                errorMessage.text(triesLeft > 0
+                    ? `${lang.incorrectCredentials}. ${triesLeft} ${triesLeft === 1 ? "try" : "tries"} left before a 5 minute pause.`
+                    : `${lang.incorrectCredentials}. That was the last try for now.`);
+            } else {
+                errorMessage.text(lang.incorrectCredentials + ".");
+            }
             passwordInput.focus();
         } else if (response.status === 429) {
-            errorMessage.text(lang.rateLimited);
             state.isRateLimited = true;
-            const retryAfter = response.headers.get("Retry-After") || 30;
-            setTimeout(() => {
-                state.lastUsername = "";
-                state.lastPassword = "";
-                state.isRateLimited = false;
-
-                enableLoginButtonIfCriteriaMet();
-            }, retryAfter * 1000);
+            const until = Date.now() + (parseInt(response.headers.get("Retry-After"), 10) || 30) * 1000;
+            const tick = () => {
+                const left = Math.max(0, Math.ceil((until - Date.now()) / 1000));
+                if (left === 0) {
+                    errorMessage.text("You can try again now.");
+                    state.lastUsername = "";
+                    state.lastPassword = "";
+                    state.isRateLimited = false;
+                    enableLoginButtonIfCriteriaMet();
+                    return;
+                }
+                const m = Math.floor(left / 60), sec = String(left % 60).padStart(2, "0");
+                errorMessage.text(`${lang.rateLimited} ${m}:${sec}. An admin can also restart DashDen or edit the config to clear it.`);
+                setTimeout(tick, 1000);
+            };
+            tick();
         } else {
             errorMessage.text(lang.unknownError);
             passwordInput.focus();

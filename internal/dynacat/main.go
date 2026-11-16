@@ -141,6 +141,10 @@ func serveApp(configPath string) error {
 
 	warnIfDirNotWritable(filepath.Dir(configPath))
 
+	saveGeneratedSecret = func(name, value string) error {
+		return setManagedSecret(configPath, name, &value)
+	}
+
 	var reloadMu sync.Mutex
 	onChange := func(newContents []byte) {
 		reloadMu.Lock()
@@ -153,6 +157,7 @@ func serveApp(configPath string) error {
 		config, err := newConfigFromYAML(newContents)
 		if err != nil {
 			slog.Error("Config has errors", "error", err)
+			setLastConfigError(err)
 
 			if !hadValidConfigOnStartup {
 				close(exitChannel)
@@ -164,6 +169,7 @@ func serveApp(configPath string) error {
 		app, err := newApplication(config)
 		if err != nil {
 			slog.Error("Failed to create application", "error", err)
+			setLastConfigError(err)
 
 			if !hadValidConfigOnStartup {
 				close(exitChannel)
@@ -172,6 +178,7 @@ func serveApp(configPath string) error {
 			return
 		}
 		app.configPath = configPath
+		setLastConfigError(nil)
 
 		if !hadValidConfigOnStartup {
 			hadValidConfigOnStartup = true
@@ -213,6 +220,19 @@ func serveApp(configPath string) error {
 	if err != nil {
 		return fmt.Errorf("parsing config: %w", err)
 	}
+
+	// config/.env is read by DashDen itself, so editing it by hand should take
+	// effect the same way editing the config does.
+	stopEnvWatch := watchEnvFile(configPath, func() {
+		if err := loadManagedSecrets(configPath); err != nil {
+			slog.Error("config/.env has errors", "error", err)
+			setLastConfigError(err)
+			return
+		}
+		slog.Info("config/.env changed, reloading")
+		requestConfigReload()
+	})
+	defer stopEnvWatch()
 
 	stopWatching, err := configFilesWatcher(configPath, configContents, configIncludes, onChange, onErr)
 	if err == nil {

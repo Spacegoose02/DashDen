@@ -200,18 +200,22 @@ func (a *application) handleAuthenticationAttempt(w http.ResponseWriter, r *http
 		return
 	}
 
-	u, exists := a.Config.Auth.Users[creds.Username]
-	if !exists {
+	refuse := func() {
 		logAuthFailure()
 		time.Sleep(waitOnFailure)
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]int{"triesLeft": a.authAttemptsLeft(ip)})
+	}
+
+	_, u := a.findPasswordUser(creds.Username)
+	if u == nil {
+		refuse()
 		return
 	}
 
 	if err := bcrypt.CompareHashAndPassword(u.PasswordHash, []byte(creds.Password)); err != nil {
-		logAuthFailure()
-		time.Sleep(waitOnFailure)
-		w.WriteHeader(http.StatusUnauthorized)
+		refuse()
 		return
 	}
 
@@ -261,6 +265,32 @@ func (a *application) checkAuthRateLimit(ip string) (bool, int) {
 	return false, 0
 }
 
+// authAttemptsLeft is how many more tries the IP has before it has to wait.
+func (a *application) authAttemptsLeft(ip string) int {
+	a.authAttemptsMu.Lock()
+	defer a.authAttemptsMu.Unlock()
+	attempt, ok := a.failedAuthAttempts[ip]
+	if !ok {
+		return AUTH_RATE_LIMIT_MAX_ATTEMPTS
+	}
+	return max(0, AUTH_RATE_LIMIT_MAX_ATTEMPTS-attempt.attempts)
+}
+
+// findPasswordUser looks a sign-in name up without caring about capital
+// letters, and returns the name as the config spells it.
+func (a *application) findPasswordUser(name string) (string, *user) {
+	name = strings.TrimSpace(name)
+	if u, ok := a.Config.Auth.Users[name]; ok {
+		return name, u
+	}
+	for configured, u := range a.Config.Auth.Users {
+		if strings.EqualFold(configured, name) {
+			return configured, u
+		}
+	}
+	return "", nil
+}
+
 // Drops the IP's counter after a successful login so valid callers are never throttled.
 func (a *application) clearAuthRateLimit(ip string) {
 	a.authAttemptsMu.Lock()
@@ -279,8 +309,8 @@ func (a *application) verifyUserPassword(username, password string) *authenticat
 		return nil
 	}
 
-	u, exists := a.Config.Auth.Users[username]
-	if !exists {
+	username, u := a.findPasswordUser(username)
+	if u == nil {
 		return nil
 	}
 

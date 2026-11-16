@@ -598,11 +598,8 @@ func isConfigStateValid(config *config) error {
 		return fmt.Errorf("no pages configured")
 	}
 
-	hasAnyAuth := len(config.Auth.Users) > 0 || config.Auth.OIDC != nil
 	hasAnyAuthMethod := (len(config.Auth.Users) > 0 && !config.Auth.DisablePassword) || config.Auth.OIDC != nil || config.Auth.Proxy != nil
-	if hasAnyAuth && config.Auth.SecretKey == "" {
-		return fmt.Errorf("secret-key must be set when auth is configured")
-	}
+	// A missing secret-key is made and saved for you; see resolveAuthSecretKey.
 
 	if config.Auth.RequireAuth != nil && *config.Auth.RequireAuth && !hasAnyAuthMethod {
 		return fmt.Errorf("require-auth cannot be true without a configured auth method")
@@ -655,8 +652,15 @@ func isConfigStateValid(config *config) error {
 			if user.PasswordHashString == "" {
 				return fmt.Errorf("user %s must have a password or a password-hash set", username)
 			}
-		} else if len(user.Password) < 12 {
-			return fmt.Errorf("the password for %s must be at least 12 characters", username)
+		} else if len(user.Password) < 8 {
+			return fmt.Errorf("the password for %s must be at least 8 characters", username)
+		}
+
+		for other := range config.Auth.Users {
+			if other != username && strings.EqualFold(other, username) {
+				a, b := min(username, other), max(username, other)
+				return fmt.Errorf("auth users %q and %q differ only in capital letters; sign-in ignores case, so keep one", a, b)
+			}
 		}
 	}
 

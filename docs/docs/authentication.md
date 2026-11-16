@@ -8,7 +8,6 @@ Protect your dashboard with username and password login. Configure via the top-l
 
 ```yaml
 auth:
-  secret-key: # generate with: ./dynacat secret:make
   users:
     admin:
       password: mysecretpassword
@@ -16,7 +15,15 @@ auth:
       password: anotherpassword
 ```
 
-To generate a secret key:
+The easiest way is to skip YAML altogether: in **Settings > People**, set a password for someone and DashDen writes a bcrypt hash for you. Things DashDen handles for you:
+
+- **Usernames ignore capital letters.** `Underwood02` can sign in as `underwood02`. Two users whose names differ only in case are refused when the config loads.
+- **Passwords need at least 8 characters.**
+- **`secret-key` is optional.** Leave it out and DashDen makes one and saves it to `config/.env` as `DASHDEN_AUTH_SECRET`, so sessions survive restarts. If you do set it, any random text of 16 or more characters works; upstream's 64-byte base64 keys keep working.
+- **Changes apply without a restart.** Editing the config or `config/.env` reloads DashDen, and a reload also clears the "too many tries" pause. After 5 wrong tries from one device, the sign-in page counts down the 5 minute pause.
+- **Broken changes are reported.** If the newest config has an error (a second `auth:` block, say), DashDen keeps running the previous one and says so on the sign-in page and in Settings, with the details in the container log.
+
+To generate a secret key yourself:
 
 ```sh
 ./dynacat secret:make
