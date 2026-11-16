@@ -323,6 +323,7 @@ func (a *application) handleSSEUpdates(w http.ResponseWriter, r *http.Request) {
 	}
 	a.sseRegisterClient(client)
 	defer a.sseUnregisterClient(client)
+	a.sseHello(client) // DashDen: lets screens reload after a config change
 
 	authRecheck := time.NewTicker(15 * time.Second)
 	defer authRecheck.Stop()

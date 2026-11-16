@@ -57,10 +57,14 @@ async function loadFromServer(id) {
     return res.ok ? res.json() : [];
 }
 
+// DashDen: names this tab when it saves, so the live update for its own
+// change doesn't make it load the list again.
+const tabID = Math.random().toString(36).slice(2, 12);
+
 async function saveToServer(id, data) {
     await fetch(`/api/todo/${encodeURIComponent(id)}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-DashDen-Tab': tabID },
         body: JSON.stringify(data)
     });
 }
@@ -375,6 +379,38 @@ function Todo(id, storageType, collapseAfterConfig) {
         loadFromServer(id).then(data => {
             renderItems(data);
         });
+
+        // DashDen: someone changed this list on another screen. Load it
+        // again, but not under someone typing in or dragging this one; wait
+        // until they leave it and their own change has been saved.
+        let stale = false;
+        let reloadTimer = null;
+        const busy = () => isDragging ||
+            items.contains(document.activeElement) ||
+            inputContainer.contains(document.activeElement);
+        const reload = () => {
+            if (busy()) {
+                stale = true;
+                return;
+            }
+            stale = false;
+            loadFromServer(id).then(data => {
+                if (!busy()) renderItems(data);
+                else stale = true;
+            });
+        };
+        document.addEventListener('dashden:todo-changed', (event) => {
+            const { todoId, from } = event.detail || {};
+            if (todoId !== id || from === tabID) return;
+            reload();
+        });
+        const onLeave = () => {
+            if (!stale) return;
+            clearTimeout(reloadTimer);
+            reloadTimer = setTimeout(reload, 1500);
+        };
+        items.addEventListener('focusout', onLeave);
+        inputContainer.addEventListener('focusout', onLeave);
     }
 
     return todoElement;

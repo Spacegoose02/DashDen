@@ -33,6 +33,9 @@ New behaviour goes in **new files**. An upstream file only gets a short hook tha
 | Short, readable widget errors | `widget-friendly-error.go` | |
 | Config health and Page use cards in Settings | `settings-health.go`, `page-usage.go` | `settings.md` |
 | More menu for pages that don't fit in the header | `static/js/nav-overflow.js` | |
+| Installable app that opens the last-seen pages offline | `pwa.go`, `static/pwa/sw.js`, `static/js/pwa.js` | |
+| Live updates: notice boards, den apps, shared to-do lists and config changes reach every open screen | `live-updates.go` | |
+| Shared database waits instead of failing with "database is locked" | `sqlite-open.go` | |
 | Docker image, Unraid template and compose, upstream watch | `.github/workflows/upstream-watch.yml`, `docker-compose.dashden.yml`, `unraid/` | `README.md` |
 
 Every Go file above has a `_test.go` next to it.
@@ -51,7 +54,7 @@ These are where upstream merges can conflict. Paths are under `internal/dynacat/
 | `main.go` | Shows `showConfigErrorPage` instead of exiting on a bad startup config, `waitForReadableConfig`; no v0.7 notice or glance.yml fallback; loads secrets saved from Settings before the config; `requestConfigReload` and a reload mutex; `config:validate` runs `checkConfigFile`; reloads record errors and warnings in `currentConfigHealth` | Keep the secrets load ahead of config parsing and the health calls in `onChange` |
 | `theme.go` | Theme lookups go through `themeByKey` (presets, seasonal, "default"); saves the choice to the person's profile | Keep `themeByKey` as the single lookup |
 | `api.go` | `apiPageWidgetViews` takes the user and drops widgets they can't see | Keep the `user` parameter |
-| `sse.go` | Broadcasts carry the widget ID so limited widgets aren't sent to others | Keep the widget ID argument |
+| `sse.go` | Broadcasts carry the widget ID so limited widgets aren't sent to others; `sseHello` greets each connection with the server start time | Keep the widget ID argument and the hello |
 | `config-editor.go` | `unescapeEmoji` when writing YAML so emoji stay readable | Keep the call in `marshalDocument` |
 | `editor-http.go` | Dynawidgets `owner` query parameter | Small |
 | `widget-dynawidgets.go` | `owner` option and `DYNAWIDGETS_OWNER`, repo keys as `owner~branch` | Re-apply if upstream reworks repo keys |
@@ -60,18 +63,21 @@ These are where upstream merges can conflict. Paths are under `internal/dynacat/
 | `widget-search.go` | Widgets limited to some people stay out of search | Small |
 | `widget-todo.go` | `per-person` option | Small |
 | `widget-schema.go` | Editor hints for the new widgets and common `allowed-*` fields | Merge entries; watch for duplicate keys |
-| `templates/page.html` | Kiosk script, den-app script, settings link, avatar and display name in the nav, DashDen logo, config problems banner | Small, but spread through the header |
+| `templates/page.html` | Kiosk script, den-app script, nav-overflow and pwa scripts, settings link, avatar and display name in the nav, DashDen logo, config problems banner | Small, but spread through the header |
 | `templates/footer.html`, `templates/widget-base.html`, `templates/first-run-setup.html` | DashDen name and links | Keep ours |
 | `dynacat.go` (defaults) | Default app name, favicon and app icon are DashDen's | Keep ours |
 | `dynacat.go` (pages) | `handlePageContentRequest` uses `updateWidgetsWithin` and unlocks the page when updates finish; `handleWidgetContentRequest` skips the update for a widget that just finished as a placeholder; `templateData.lateWidgets`; `pageUsage.setPath` and `pageUsage.record` | Re-apply if upstream changes page rendering |
+| `dynacat.go` (live updates) | `handleWidgetActionRequest` records the status and calls `pushAfterWidgetAction`; `handleTodoSave` calls `pushTodoChange`; the `/sw.js` route via `registerPWARoutes` | Three calls |
+| `notice-storage.go`, `todo-storage.go`, `user-prefs.go` | Open the database with `openSQLite` | One call each |
+| `static/js/todo.js` | Sends `X-DashDen-Tab` when saving and reloads the list on `dashden:todo-changed` | Re-apply if upstream rewrites server storage |
 | `config-fields.go` | `customIconField.cacheURL` calls `cachedIconURL` instead of downloading | One call |
 | `image_cache.go` | `IsBuildingCache` leaves background icon downloads out | One line |
 | `templates/page-content.html` | Widgets render through `$.RenderWidget` | Two lines |
 | `templates/widget-base.html` | Friendly error block instead of the ERROR banner | Re-apply if upstream changes the error block |
 | `templates.go` | `friendlyWidgetError` template function | One line |
 | `templates/page-content.html` | `$.CanSeeWidget` check around each widget | Keep the check, or limited widgets leak |
-| `templates/document.html` | One line so a theme chosen on the profile wins over the browser's saved theme | Small |
-| `static/js/page.js` | Exposes `dynacatSetupDynamicRelativeTime` on `window` | One line |
+| `templates/document.html` | One line so a theme chosen on the profile wins over the browser's saved theme; `appStarted` in `pageData` | Small |
+| `static/js/page.js` | Exposes `dynacatSetupDynamicRelativeTime` on `window`; the SSE handler passes to-do changes on and reloads after a config change | Small |
 | `static/js/editor.js` | Live theme preview in the styling modal, dynawidgets owner | Re-apply if upstream rewrites the modal |
 | `static/css/site.css` | Kiosk styles at the end | Append-only |
 | `static/css/main.css` | Imports `config-problems.css` and `dashden.css` | Two lines |

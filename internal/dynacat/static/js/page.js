@@ -2306,6 +2306,16 @@ function _initSSE() {
     _sseSource.addEventListener('widget-update', function(event) {
         try {
             const data = JSON.parse(event.data);
+            // DashDen: the same stream carries to-do changes and the
+            // server's start time (see live-updates.go).
+            if (data.todoId !== undefined) {
+                document.dispatchEvent(new CustomEvent('dashden:todo-changed', { detail: data }));
+                return;
+            }
+            if (data.appStarted !== undefined) {
+                _reloadIfServerRestarted(data.appStarted);
+                return;
+            }
             _applyWidgetUpdate(data.widgetId, data.html);
         } catch (e) {
             console.error('SSE parse error', e);
@@ -2320,6 +2330,27 @@ function _initSSE() {
             window.location.reload();
         }
     };
+}
+
+// DashDen: the config changed while this screen was open, so the server
+// restarted with new pages or widgets. Reload, but not under someone typing
+// or using the editor.
+function _reloadIfServerRestarted(startedAt) {
+    if (!pageData.appStarted || startedAt === pageData.appStarted) {
+        return;
+    }
+    const busy = () => document.body.classList.contains('editing') ||
+        (document.activeElement && document.activeElement.matches('input, textarea, select, [contenteditable]'));
+    if (!busy()) {
+        window.location.reload();
+        return;
+    }
+    const onFocusOut = () => setTimeout(() => {
+        if (busy()) return;
+        document.removeEventListener('focusout', onFocusOut);
+        window.location.reload();
+    }, 0);
+    document.addEventListener('focusout', onFocusOut);
 }
 
 window.addEventListener('beforeunload', _closeSSE);

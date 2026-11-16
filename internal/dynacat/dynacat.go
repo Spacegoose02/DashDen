@@ -915,7 +915,12 @@ func (a *application) handleWidgetActionRequest(w http.ResponseWriter, r *http.R
 	page.mu.Lock()
 	defer page.mu.Unlock()
 
-	widget.handleRequest(w, r)
+	// DashDen: show the change on every other open screen too.
+	rec := &statusRecorder{ResponseWriter: w}
+	widget.handleRequest(rec, r)
+	if rec.succeeded() {
+		a.pushAfterWidgetAction(widget)
+	}
 }
 
 func (a *application) StaticAssetPath(asset string) string {
@@ -995,6 +1000,7 @@ func (a *application) handleTodoSave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	a.pushTodoChange(r, listID) // DashDen: live updates
 	w.WriteHeader(http.StatusNoContent)
 }
 
