@@ -43,6 +43,7 @@ func (a *application) registerSettingsRoutes(mux *http.ServeMux) {
 	a.registerSettingsAppsRoutes(mux)
 	a.registerSettingsThemesRoutes(mux)
 	mux.HandleFunc("GET /api/settings/overview", a.settingsJSON(a.handleSettingsOverview))
+	mux.HandleFunc("GET /api/settings/page-use", a.settingsJSON(a.handleSettingsPageUse))
 	mux.HandleFunc("GET /api/settings/secrets", a.settingsJSON(a.handleSettingsSecretsList))
 	mux.HandleFunc("PUT /api/settings/secrets/{name}", a.settingsJSON(a.handleSettingsSecretSet))
 	mux.HandleFunc("DELETE /api/settings/secrets/{name}", a.settingsJSON(a.handleSettingsSecretDelete))
@@ -280,4 +281,13 @@ func reloadSoon() {
 		time.Sleep(300 * time.Millisecond)
 		requestConfigReload()
 	}()
+}
+
+func (a *application) handleSettingsPageUse(w http.ResponseWriter, r *http.Request) {
+	report, err := a.pageUseReport()
+	if err != nil {
+		writeJSONError(w, http.StatusServiceUnavailable, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, report)
 }

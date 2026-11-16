@@ -765,6 +765,41 @@ serverForm.addEventListener("submit", async (event) => {
     }
 });
 
+function timeAgo(unixSeconds) {
+    if (!unixSeconds) return "Never";
+    const days = Math.floor((Date.now() / 1000 - unixSeconds) / 86400);
+    if (days <= 0) return "Today";
+    if (days === 1) return "Yesterday";
+    if (days < 60) return `${days} days ago`;
+    return `${Math.round(days / 30)} months ago`;
+}
+
+async function loadPageUse() {
+    const card = document.getElementById("page-use-card");
+    try {
+        const report = await call("GET", "/page-use");
+        const tbody = card.querySelector("tbody");
+        tbody.replaceChildren();
+        const staleAfter = Date.now() / 1000 - 30 * 86400;
+        const pages = [...report.pages].sort((a, b) => a.views - b.views);
+        let stale = 0;
+        for (const p of pages) {
+            const tr = document.createElement("tr");
+            const isStale = report.countingSince && report.countingSince < staleAfter && p.lastView < staleAfter;
+            if (isStale) stale++;
+            tr.append(cell(p.name), cell(String(p.views)), cell(timeAgo(p.lastView), isStale ? "color-negative" : ""));
+            tbody.append(tr);
+        }
+        const since = report.countingSince ? new Date(report.countingSince * 1000).toLocaleDateString() : "now";
+        document.getElementById("page-use-note").textContent = stale
+            ? `Counting since ${since}. ${stale} page${stale === 1 ? " hasn't" : "s haven't"} been opened in 30 days, so ${stale === 1 ? "it's a candidate" : "they're candidates"} to remove.`
+            : `Counting since ${since}. Pages are counted when someone opens them, not who.`;
+        card.hidden = false;
+    } catch (e) {
+        card.hidden = true;
+    }
+}
+
 function renderHealth(o) {
     const card = document.getElementById("health-card");
     const body = document.getElementById("health-body");
@@ -817,6 +852,7 @@ async function loadOverview() {
         const o = await call("GET", "/overview");
         renderSetup(o);
         renderHealth(o);
+        loadPageUse();
         const rows = [
             ["Sign-in", o.signIn.length ? o.signIn.join(", ") : "None, anyone who can reach DashDen can see it"],
             ["Household", o.members ? `${o.members} people, admins: ${o.admins.length ? o.admins.join(", ") : "none yet"}` : "No household profiles yet"],

@@ -468,6 +468,8 @@ func newApplication(c *config) (*application, error) {
 		dbPath = filepath.Join(config.assetsPath(), "dynacat.db")
 	}
 
+	pageUsage.setPath(dbPath) // DashDen: page-usage.go
+
 	if app.AnyAuthEnabled() && !config.Theme.DisablePicker {
 		app.userPrefs = newUserPrefsStorage(dbPath)
 		if err := app.userPrefs.init(); err != nil {
@@ -695,6 +697,7 @@ func (a *application) handlePageRequest(w http.ResponseWriter, r *http.Request) 
 	if a.redirectToHomePage(w, r, user) {
 		return
 	}
+	pageUsage.record(page.Slug) // DashDen: page-usage.go
 
 	data := templateData{
 		Page:            page,
