@@ -303,16 +303,44 @@ function renderCanvas() {
     const page = state.config.pages[state.pageIndex];
     const canAddColumn = page.columns.length < maxColumnsFor(page);
 
+    // DashDen: bento pages show their cards on a grid with tile sizes.
+    const bento = isBentoPage(page);
+    container.classList.toggle("page-columns-bento", bento);
+
     page.columns.forEach((col, colIndex) => {
         if (canAddColumn) container.append(addColumnLine(colIndex));
-        const colEl = div(`page-column page-column-${col.size}`);
-        setupDropTarget(colEl, [colIndex]);
+        const colEl = div(`page-column page-column-${col.size}${bento ? " editor-bento-canvas" : ""}`);
+        setupDropTarget(colEl, [colIndex], false, bento);
         (col.widgets || []).forEach((w, i) => colEl.append(buildWidgetCard(w, [colIndex, i])));
         colEl.append(buildColumnTools(colIndex, col.size));
         container.append(colEl);
     });
     if (canAddColumn) container.append(addColumnLine(page.columns.length));
     container.dataset.editorCanvas = "1";
+}
+
+function isBentoPage(page) {
+    return (page.options || {}).layout === "bento";
+}
+
+// DashDen: tile sizes for bento pages, in the order the size button cycles.
+// A plain number is a width with the height of the content.
+const TILE_SIZES = ["1", "2", "3", "4", "1x2", "2x2"];
+const TILE_ALIASES = { small: "1", wide: "2", tall: "1x2", big: "2x2", large: "2x2", banner: "4", "1x1": "1" };
+
+function tileOf(w) {
+    const raw = String((w.values || {}).tile || "").trim().toLowerCase();
+    const size = TILE_ALIASES[raw] || raw || "1";
+    const [cols, rows] = size.split("x");
+    const width = parseInt(cols, 10) || 1;
+    const height = parseInt(rows, 10) || 0;
+    return { size, w: width, h: height, label: height ? `${width}×${height}` : `${width} wide` };
+}
+
+function cycleTile(w, path) {
+    const current = tileOf(w).size;
+    const next = TILE_SIZES[(TILE_SIZES.indexOf(current) + 1) % TILE_SIZES.length];
+    save({ op: "editWidget", page: state.pageIndex, path, fields: { tile: next === "1" ? "" : next } });
 }
 
 function buildColumnTools(colIndex, size) {
@@ -375,6 +403,19 @@ function buildWidgetCard(w, path) {
     header.append(body);
 
     const tools = div("editor-ui editor-widget-tools");
+    const page = state.config.pages[state.pageIndex];
+    if (page && isBentoPage(page) && path.length === 2) {
+        const tile = tileOf(w);
+        card.style.setProperty("--card-w", Math.min(tile.w, 4));
+        card.style.setProperty("--card-h", Math.min(tile.h || 1, 4));
+        const sizeBtn = button(tile.label, "editor-tile-size");
+        sizeBtn.title = "Tile size (width x height). Click to change.";
+        sizeBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            cycleTile(w, path);
+        });
+        tools.append(sizeBtn);
+    }
     tools.append(toolButton("Edit", iconPencil, () => openWidgetModal(path)));
     tools.append(toolButton("Delete", iconTrash, () => removeWidget(path)));
     header.append(tools);
@@ -396,7 +437,8 @@ function directWidgets(column) {
     return Array.from(column.children).filter((el) => el.classList.contains("widget"));
 }
 
-function setupDropTarget(element, basePath, horizontal = false) {
+function setupDropTarget(element, basePath, horizontal = false, grid = false) {
+    if (grid) return setupGridDropTarget(element, basePath);
     const marker = div(`editor-ui editor-drop-marker${horizontal ? " editor-drop-marker-v" : ""}`);
     const pointer = (e) => (horizontal ? e.clientX : e.clientY);
 
@@ -413,6 +455,46 @@ function setupDropTarget(element, basePath, horizontal = false) {
         e.stopPropagation();
         const index = dropIndex(element, pointer(e), horizontal);
         marker.remove();
+        handleDrop([...basePath, index]);
+    });
+}
+
+// DashDen: on a bento grid, cards sit in reading order, so a drop goes
+// before the first card that starts below the pointer, or to its right on
+// the same row.
+function gridDropIndex(element, x, y) {
+    const widgets = directWidgets(element);
+    for (let i = 0; i < widgets.length; i++) {
+        const box = widgets[i].getBoundingClientRect();
+        if (y < box.top) return i;
+        if (y <= box.bottom && x < box.left + box.width / 2) return i;
+    }
+    return widgets.length;
+}
+
+function clearGridMarks(element) {
+    element.classList.remove("editor-drop-end");
+    directWidgets(element).forEach((w) => w.classList.remove("editor-drop-before"));
+}
+
+function setupGridDropTarget(element, basePath) {
+    element.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        clearGridMarks(element);
+        const index = gridDropIndex(element, e.clientX, e.clientY);
+        const widgets = directWidgets(element);
+        if (index < widgets.length) widgets[index].classList.add("editor-drop-before");
+        else element.classList.add("editor-drop-end");
+    });
+    element.addEventListener("dragleave", (e) => {
+        if (!element.contains(e.relatedTarget)) clearGridMarks(element);
+    });
+    element.addEventListener("drop", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const index = gridDropIndex(element, e.clientX, e.clientY);
+        clearGridMarks(element);
         handleDrop([...basePath, index]);
     });
 }
@@ -570,7 +652,7 @@ function openEditPageModal() {
     }
 
     const opt = page.options || {};
-    const widths = ["", "default", "wide", "slim"];
+    const widths = ["", "default", "wide", "full", "slim"];
     const controls = [];
     const reg = (key, ctl) => {
         controls.push({ key, read: ctl.read });
@@ -583,6 +665,7 @@ function openEditPageModal() {
     basic.append(reg("slug", textField("Slug (URL)", opt["slug"], "auto from name")));
 
     const layout = div("editor-fields");
+    layout.append(reg("layout", selectField("Layout", opt["layout"], ["", "columns", "bento"])));
     layout.append(reg("width", selectField("Width", opt["width"], widths)));
     layout.append(reg("key-bind", textField("Key bind", opt["key-bind"], "e.g. d h")));
     layout.append(reg("center-vertically", checkField("Center vertically", opt["center-vertically"])));
@@ -596,7 +679,7 @@ function openEditPageModal() {
     nav.append(reg("hide-from-navigation", checkField("Hide from navigation", opt["hide-from-navigation"])));
     nav.append(reg("hide-desktop-navigation", checkField("Hide desktop navigation", opt["hide-desktop-navigation"])));
     nav.append(reg("show-mobile-header", checkField("Show mobile header", opt["show-mobile-header"])));
-    nav.append(reg("desktop-navigation-width", selectField("Desktop navigation width", opt["desktop-navigation-width"], widths)));
+    nav.append(reg("desktop-navigation-width", selectField("Desktop navigation width", opt["desktop-navigation-width"], widths.filter((w) => w !== "full"))));
 
     const sections = [
         sectionTitle("Basics"),

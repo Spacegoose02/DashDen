@@ -185,6 +185,7 @@ type widgetBase struct {
 	HideHeader          bool                 `yaml:"hide-header"`
 	Hidden              bool                 `yaml:"-"`
 	CSSClass            string               `yaml:"css-class"`
+	Tile                string               `yaml:"tile"` // DashDen: page-bento.go
 	CustomCacheDuration durationField        `yaml:"cache"`
 	UpdateInterval      *updateIntervalField `yaml:"update-interval"`
 	ContentAvailable    bool                 `yaml:"-"`

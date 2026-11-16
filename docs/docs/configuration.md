@@ -616,7 +616,41 @@ pages:
 ```
 
 #### `width`
-The maximum width of the page on desktop. Possible values are `default`, `slim` and `wide`.
+The maximum width of the page on desktop. Possible values are `default`, `slim`, `wide` and `full`. `full` uses the whole screen, which suits very wide monitors.
+
+Anyone can also switch on **Wide view** with the arrows button in the header. It uses the whole screen on every page and is remembered by that browser.
+
+#### `layout`
+`columns` (the default) or `bento`. A bento page puts every widget on one grid of tiles. Wider screens get more grid columns, so the same page fills a phone, a laptop or an ultrawide monitor. Tiles of different sizes pack together without gaps.
+
+Set each widget's size with `tile`:
+
+```yaml
+pages:
+  - name: Home
+    layout: bento
+    width: full
+    columns:
+      - size: full
+        widgets:
+          - type: clock
+            tile: wide
+          - type: calendar
+            tile: tall
+          - type: notice-board
+            id: family
+            tile: big
+```
+
+| `tile` | Size |
+| ------ | ---- |
+| `1` or `small` (default) | One column, as tall as its content |
+| `2` or `wide`, `3`, `4` or `banner` | That many columns, as tall as its content |
+| `1x2` or `tall` | One column, two tile heights |
+| `2x2` or `big` | Two columns, two tile heights |
+| `WxH` | Any width and height from 1 to 4 |
+
+A tile with a height scrolls its content if it doesn't fit. On phones every tile is one column and as tall as its content. In the editor, a bento page shows its widgets on the grid; drag them to reorder and press the size button on a card to change its tile.
 
 #### `desktop-navigation-width`
 The maximum width of the desktop navigation. Useful if you have a few pages that use a different width than the rest and don't want the navigation to jump abruptly when going to and away from those pages. Possible values are `default`, `slim` and `wide`.
@@ -626,6 +660,7 @@ Here are the pixel equivalents for each value:
 * default: `1600px`
 * slim: `1100px`
 * wide: `1920px`
+* full: the whole screen (`width` only)
 
 > [!NOTE]
 >
