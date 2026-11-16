@@ -176,7 +176,7 @@ func fetchYoutubeChannelUploads(ctx context.Context, channelOrPlaylistIDs []stri
 		requests = append(requests, request)
 	}
 
-	task := decodeXmlFromRequestTask[youtubeFeedResponseXml](defaultHTTPClient)
+	task := retryYoutubeFeedTask(decodeXmlFromRequestTask[youtubeFeedResponseXml](defaultHTTPClient))
 	job := newJob(task, requests).withWorkers(30)
 	responses, errs, err := workerPoolDo(job)
 	if err != nil {
@@ -291,4 +291,34 @@ func fetchYoutubeChannelUploads(ctx context.Context, channelOrPlaylistIDs []stri
 	}
 
 	return videos, nil
+}
+
+// DashDen: YouTube's feeds have been answering at random with 404 or 500
+// for a working channel, sometimes for every channel at once, and a second
+// try a moment later usually works. So each feed gets two more tries before
+// it counts as failed.
+var youtubeFeedRetryDelays = []time.Duration{1500 * time.Millisecond, 4 * time.Second}
+
+func retryYoutubeFeedTask(task func(*http.Request) (youtubeFeedResponseXml, error)) func(*http.Request) (youtubeFeedResponseXml, error) {
+	return func(req *http.Request) (youtubeFeedResponseXml, error) {
+		out, err := task(req)
+		for _, delay := range youtubeFeedRetryDelays {
+			if err == nil || !youtubeFeedErrorIsFlaky(err) {
+				break
+			}
+			select {
+			case <-req.Context().Done():
+				return out, err
+			case <-time.After(delay):
+			}
+			out, err = task(req)
+		}
+		return out, err
+	}
+}
+
+func youtubeFeedErrorIsFlaky(err error) bool {
+	msg := err.Error()
+	return strings.Contains(msg, "status code 404") || strings.Contains(msg, "status code 5") ||
+		strings.Contains(msg, "timeout") || strings.Contains(msg, "connection reset") || strings.Contains(msg, "EOF")
 }
