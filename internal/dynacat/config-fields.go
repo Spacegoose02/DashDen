@@ -1,7 +1,6 @@
 package dynacat
 
 import (
-	"context"
 	"crypto/tls"
 	"fmt"
 	"html/template"
@@ -228,20 +227,10 @@ func (i *customIconField) cacheURL(cache *imageCache) {
 		return
 	}
 
-	cachedURL, err := cache.CacheURL(context.Background(), currentURL)
-	if err != nil || cachedURL == "" {
-		fallbackURLs := iconFallbackURLs(currentURL)
-		cachedURL = ""
-		for _, fallbackURL := range fallbackURLs {
-			candidate, fallbackErr := cache.CacheURL(context.Background(), fallbackURL)
-			if fallbackErr == nil && candidate != "" {
-				cachedURL = candidate
-				break
-			}
-		}
-		if cachedURL == "" {
-			return
-		}
+	// DashDen: never wait on the network here, see image-cache-background.go.
+	cachedURL := cache.cachedIconURL(currentURL)
+	if cachedURL == "" {
+		return
 	}
 
 	i.URL = template.URL(cachedURL)

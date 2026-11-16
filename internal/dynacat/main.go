@@ -158,7 +158,9 @@ func serveApp(configPath string) error {
 			}
 
 			if !hadValidConfigOnStartup {
-				close(exitChannel)
+				// DashDen: explain the problem on the dashboard's port
+				// instead of exiting, and recover once it's fixed.
+				showConfigErrorPage(newContents, err)
 			}
 
 			return
@@ -170,7 +172,9 @@ func serveApp(configPath string) error {
 			setLastConfigError(err)
 
 			if !hadValidConfigOnStartup {
-				close(exitChannel)
+				// DashDen: explain the problem on the dashboard's port
+				// instead of exiting, and recover once it's fixed.
+				showConfigErrorPage(newContents, err)
 			}
 
 			return
@@ -194,6 +198,7 @@ func serveApp(configPath string) error {
 				slog.Error("Error while trying to stop server", "error", err)
 			}
 		}
+		stopConfigErrorPage()
 
 		go func() {
 			var startServer func() error
@@ -220,7 +225,7 @@ func serveApp(configPath string) error {
 		onChange(contents)
 	}
 
-	configContents, configIncludes, err := parseYAMLIncludes(configPath)
+	configContents, configIncludes, err := waitForReadableConfig(configPath)
 	if err != nil {
 		return fmt.Errorf("parsing config: %w", err)
 	}
