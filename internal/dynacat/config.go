@@ -140,6 +140,7 @@ type page struct {
 	DynamicUpdates         *bool           `yaml:"dynamic-updates"`
 	Width                  string          `yaml:"width"`
 	Layout                 string          `yaml:"layout"` // DashDen: page-bento.go
+	BentoColumns           int             `yaml:"bento-columns"` // DashDen: page-bento.go
 	DesktopNavigationWidth string          `yaml:"desktop-navigation-width"`
 	ShowMobileHeader       bool            `yaml:"show-mobile-header"`
 	HideDesktopNavigation  bool            `yaml:"hide-desktop-navigation"`

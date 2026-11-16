@@ -28,7 +28,8 @@ import (
 const (
 	pageLayoutColumns = "columns"
 	pageLayoutBento   = "bento"
-	bentoMaxTileSpan  = 4
+	bentoMaxTileSpan  = 6
+	bentoMaxColumns   = 12
 )
 
 // A size without a height ("2") is as tall as its content.
@@ -111,11 +112,24 @@ func (p *page) IsBento() bool {
 	return p.Layout == pageLayoutBento
 }
 
+// BentoAttrs fixes the grid's column count when the page sets bento-columns,
+// so tiles line up in the same rows on every wide screen. Narrower screens
+// still drop to two columns and phones to one (bento.css).
+func (p *page) BentoAttrs() template.HTMLAttr {
+	if p.BentoColumns <= 0 {
+		return ""
+	}
+	return template.HTMLAttr(fmt.Sprintf(` data-bento-columns="%d" style="--bento-cols: %d"`, p.BentoColumns, p.BentoColumns))
+}
+
 func validatePageLayout(p *page, pageNumber int) error {
 	switch p.Layout {
 	case "", pageLayoutColumns, pageLayoutBento:
 	default:
 		return fmt.Errorf("page %d: layout can be columns or bento", pageNumber)
+	}
+	if p.BentoColumns < 0 || p.BentoColumns > bentoMaxColumns {
+		return fmt.Errorf("page %d: bento-columns goes from 1 to %d", pageNumber, bentoMaxColumns)
 	}
 
 	for c := range p.Columns {

@@ -49,7 +49,7 @@ These are where upstream merges can conflict. Paths are under `internal/dynacat/
 
 | File | What DashDen changed | If upstream changes it |
 | ---- | -------------------- | ---------------------- |
-| `config.go` | `user.credential` (kept for username changes); `auth.proxy`, `theme.seasonal`, `theme.builtin-themes` and `household` fields; proxy auth counts as a sign-in method; calls `validateProxyAuthConfig` and `validateHousehold`; `recursiveParseYAMLIncludes` calls `parseYAMLIncludesWithArgs`, a line-by-line version that reads `with:` blocks; page `layout` field, `width: full` and the `validatePageLayout` call | Keep the three fields and the two validate calls; port upstream include changes into `parseYAMLIncludesWithArgs` and mirror them in `recursiveConfigLineMap` |
+| `config.go` | `user.credential` (kept for username changes); `auth.proxy`, `theme.seasonal`, `theme.builtin-themes` and `household` fields; proxy auth counts as a sign-in method; calls `validateProxyAuthConfig` and `validateHousehold`; `recursiveParseYAMLIncludes` calls `parseYAMLIncludesWithArgs`, a line-by-line version that reads `with:` blocks; page `layout` and `bento-columns` fields, `width: full` and the `validatePageLayout` call | Keep the three fields and the two validate calls; port upstream include changes into `parseYAMLIncludesWithArgs` and mirror them in `recursiveConfigLineMap` |
 | `config-editor.go` | `widgetSlot` gains `shared`/`sharedCount`; includes with `with:` become shared slots; edit, remove and move call `checkSharedSlot` | Re-apply the four hooks |
 | `cli.go` | `check` and `config:check` run the config check | Small |
 | `auth.go` | `authenticatedUser` gains `Name`, `Email`, `IsProxy`, `member` and `DisplayName()`; `getAuthenticatedUser` wraps the result in `withHousehold` and tries the proxy headers | The upstream function body becomes `getSignedInUser`; re-apply the wrapper |
@@ -75,7 +75,7 @@ These are where upstream merges can conflict. Paths are under `internal/dynacat/
 | `static/js/todo.js` | Sends `X-DashDen-Tab` when saving and reloads the list on `dashden:todo-changed` | Re-apply if upstream rewrites server storage |
 | `config-fields.go` | `customIconField.cacheURL` calls `cachedIconURL` instead of downloading | One call |
 | `image_cache.go` | `IsBuildingCache` leaves background icon downloads out | One line |
-| `templates/page-content.html` | Widgets render through `$.RenderWidget`; `page-columns-bento` class | Three lines |
+| `templates/page-content.html` | Widgets render through `$.RenderWidget`; `page-columns-bento` class and `BentoAttrs` | Three lines |
 | `templates/widget-base.html` | Friendly error block instead of the ERROR banner; `TileAttrs` | Re-apply if upstream changes the error block |
 | `templates.go` | `friendlyWidgetError` template function | One line |
 | `templates/page-content.html` | `$.CanSeeWidget` check around each widget | Keep the check, or limited widgets leak |

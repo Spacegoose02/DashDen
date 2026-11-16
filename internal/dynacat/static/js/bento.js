@@ -2,7 +2,7 @@
 // spans its tile width in columns, and as many small rows as its height
 // needs, so tiles of different heights fit together without gaps.
 
-const MAX_SPAN = 4;
+const MAX_SPAN = 6;
 
 function px(value) {
     return parseFloat(value) || 0;

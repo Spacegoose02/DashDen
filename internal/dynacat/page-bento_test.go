@@ -23,7 +23,7 @@ func TestParseBentoTile(t *testing.T) {
 			t.Errorf("%q: got %+v, %v; want %+v", in, got, err, want)
 		}
 	}
-	for _, bad := range []string{"0", "5", "2x9", "huge", "x2", "-1"} {
+	for _, bad := range []string{"0", "7", "2x9", "huge", "x2", "-1"} {
 		if _, err := parseBentoTile(bad); err == nil {
 			t.Errorf("%q was accepted", bad)
 		}
@@ -99,5 +99,20 @@ func TestTileFromCSSClass(t *testing.T) {
 	}
 	if got := string((&widgetBase{CSSClass: "bento-l", Tile: "banner"}).TileAttrs()); got != `data-tile-w="4"` {
 		t.Errorf("tile should win over the class, got %s", got)
+	}
+}
+
+func TestBentoColumns(t *testing.T) {
+	if got := (&page{BentoColumns: 6}).BentoAttrs(); got != ` data-bento-columns="6" style="--bento-cols: 6"` {
+		t.Fatal(got)
+	}
+	if (&page{}).BentoAttrs() != "" {
+		t.Fatal("no bento-columns should add nothing")
+	}
+	if err := validatePageLayout(&page{Layout: "bento", BentoColumns: 13}, 1); err == nil {
+		t.Fatal("13 columns was accepted")
+	}
+	if err := validatePageLayout(&page{Layout: "bento", BentoColumns: 6}, 1); err != nil {
+		t.Fatal(err)
 	}
 }
