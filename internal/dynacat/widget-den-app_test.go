@@ -76,6 +76,11 @@ func newDenMock(t *testing.T) (*denMock, *httptest.Server) {
 				{"id": 7, "name": "Leo", "minutes": 30, "note": "one more race", "state": "pending"},
 				{"id": 6, "name": "Mia", "minutes": 15, "state": "declined"},
 			})
+		case "GET /api/bot/v1/servers":
+			json.NewEncoder(w).Encode([]map[string]any{
+				{"name": "Family", "channels": []map[string]any{{"id": 42, "kind": "text", "name": "general"}, {"id": 43, "kind": "voice", "name": "Lounge"}}},
+				{"name": "Gaming", "channels": []map[string]any{{"id": 77, "kind": "text", "name": "general"}, {"id": 78, "kind": "text", "name": "clips"}}},
+			})
 		case "GET /api/bot/v1/channels/42/messages":
 			json.NewEncoder(w).Encode([]map[string]any{
 				{"body": "On my way", "createdAt": "2026-11-16T01:00:00.000Z", "author": map[string]any{"displayName": "Mom"}},
@@ -376,5 +381,25 @@ func TestDendropQuickMessages(t *testing.T) {
 	}
 	if rec := pressDenButton(w, "post", `{"id":"1"}`); rec.Code != http.StatusBadRequest {
 		t.Fatal("only configured messages can be sent")
+	}
+}
+
+func TestDendropChannelByName(t *testing.T) {
+	_, srv := newDenMock(t)
+	for channel, want := range map[string]string{"42": "42", "Family/#general": "42", "family/General": "42", "#clips": "78"} {
+		w := &denAppWidget{App: "dendrop", URL: srv.URL, Token: "tok", Channel: channel}
+		if err := w.initialize(); err != nil {
+			t.Fatal(err)
+		}
+		if err := w.resolveDendropChannel(context.Background()); err != nil || w.channelID != want {
+			t.Fatalf("%q: got %q, %v", channel, w.channelID, err)
+		}
+	}
+	for _, channel := range []string{"general", "Lounge", "nope"} {
+		w := &denAppWidget{App: "dendrop", URL: srv.URL, Token: "tok", Channel: channel}
+		w.initialize()
+		if err := w.resolveDendropChannel(context.Background()); err == nil {
+			t.Fatalf("%q should be refused (two servers, voice channel, or missing)", channel)
+		}
 	}
 }
