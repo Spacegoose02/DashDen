@@ -209,7 +209,8 @@ func (c *imageCache) IsBuildingCache() bool {
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	return len(c.inFlight) > 0
+	// DashDen: icons fetched in the background don't hold up the page.
+	return int64(len(c.inFlight)) > backgroundIconDownloads.Load()
 }
 
 func extensionFromPath(path string) string {

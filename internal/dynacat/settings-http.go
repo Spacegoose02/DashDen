@@ -43,6 +43,7 @@ func (a *application) registerSettingsRoutes(mux *http.ServeMux) {
 	a.registerSettingsAppsRoutes(mux)
 	a.registerSettingsThemesRoutes(mux)
 	mux.HandleFunc("GET /api/settings/overview", a.settingsJSON(a.handleSettingsOverview))
+	mux.HandleFunc("GET /api/settings/page-use", a.settingsJSON(a.handleSettingsPageUse))
 	mux.HandleFunc("GET /api/settings/secrets", a.settingsJSON(a.handleSettingsSecretsList))
 	mux.HandleFunc("PUT /api/settings/secrets/{name}", a.settingsJSON(a.handleSettingsSecretSet))
 	mux.HandleFunc("DELETE /api/settings/secrets/{name}", a.settingsJSON(a.handleSettingsSecretDelete))
@@ -125,17 +126,18 @@ type settingsPageData struct {
 }
 
 type settingsOverview struct {
-	Version       string        `json:"version"`
-	SignIn        []string      `json:"signIn"`
-	Members       int           `json:"members"`
-	Admins        []string      `json:"admins"`
-	Pages         int           `json:"pages"`
-	ConfigPath    string        `json:"configPath"`
-	SecretsFile   string        `json:"secretsFile"`
-	MissingSecret int           `json:"missingSecrets"`
-	Snapshots     int           `json:"snapshots"`
-	Setup         settingsSetup `json:"setup"`
-	ConfigError   string        `json:"configError,omitempty"`
+	Version       string         `json:"version"`
+	SignIn        []string       `json:"signIn"`
+	Members       int            `json:"members"`
+	Admins        []string       `json:"admins"`
+	Pages         int            `json:"pages"`
+	ConfigPath    string         `json:"configPath"`
+	SecretsFile   string         `json:"secretsFile"`
+	MissingSecret int            `json:"missingSecrets"`
+	Snapshots     int            `json:"snapshots"`
+	Setup         settingsSetup  `json:"setup"`
+	ConfigError   string         `json:"configError,omitempty"`
+	Health        settingsHealth `json:"health"`
 }
 
 // settingsSetup drives the getting-started steps on the Overview tab.
@@ -186,6 +188,7 @@ func (a *application) handleSettingsOverview(w http.ResponseWriter, r *http.Requ
 	if err := getLastConfigError(); err != nil {
 		o.ConfigError = err.Error()
 	}
+	o.Health = a.settingsHealth()
 	o.Setup = settingsSetup{HasAdmin: a.hasHouseholdAdmin(), SignIn: a.AnyAuthEnabled(), AppsAdded: len(a.appsInUse())}
 	if u := a.settingsUser(w, r); u != nil {
 		o.Setup.You = u.Username
@@ -278,4 +281,13 @@ func reloadSoon() {
 		time.Sleep(300 * time.Millisecond)
 		requestConfigReload()
 	}()
+}
+
+func (a *application) handleSettingsPageUse(w http.ResponseWriter, r *http.Request) {
+	report, err := a.pageUseReport()
+	if err != nil {
+		writeJSONError(w, http.StatusServiceUnavailable, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, report)
 }

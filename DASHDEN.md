@@ -27,6 +27,12 @@ New behaviour goes in **new files**. An upstream file only gets a short hook tha
 | Config check: ignored settings with file and line, `dashden check`, banner for admins | `config-check.go`, `templates/config-problems.html`, `static/css/config-problems.css`, `docker/dashden` | `configuration.md` |
 | Include values (`with:` and `${arg:name}`) for reusable widget files | `config-include-args.go` | `configuration.md` |
 | DashDen look and branding: logo, favicon, app icon | `static/css/dashden.css`, `static/logo.png`, `static/favicon.png`, `static/app-icon.png` | |
+| Fast startup: icons on disk used at once, missing ones fetched in the background | `image-cache-background.go` | |
+| Error page instead of exiting when the config is broken at startup | `config-error-page.go` | `configuration.md` |
+| Pages answer within 3 seconds; slow widgets show a placeholder | `page-progressive.go` | |
+| Short, readable widget errors | `widget-friendly-error.go` | |
+| Config health and Page use cards in Settings | `settings-health.go`, `page-usage.go` | `settings.md` |
+| More menu for pages that don't fit in the header | `static/js/nav-overflow.js` | |
 | Docker image, Unraid template and compose, upstream watch | `.github/workflows/upstream-watch.yml`, `docker-compose.dashden.yml`, `unraid/` | `README.md` |
 
 Every Go file above has a `_test.go` next to it.
@@ -42,7 +48,7 @@ These are where upstream merges can conflict. Paths are under `internal/dynacat/
 | `cli.go` | `check` and `config:check` run the config check | Small |
 | `auth.go` | `authenticatedUser` gains `Name`, `Email`, `IsProxy`, `member` and `DisplayName()`; `getAuthenticatedUser` wraps the result in `withHousehold` and tries the proxy headers | The upstream function body becomes `getSignedInUser`; re-apply the wrapper |
 | `dynacat.go` | Settings, people, apps and themes routes; `widgetAccessByID` filled by `registerWidget`; `userPrefs`, `noticeStorage`, `todoPerPerson`; per-person keys in `authorizeTodoRequest`; seasonal and profile theme in `populateTemplateRequestData` | The biggest risk. Re-apply route blocks and fields by hand; run `go test ./...` |
-| `main.go` | Loads secrets saved from Settings before the config; `requestConfigReload` and a reload mutex; `config:validate` runs `checkConfigFile`; reloads record errors and warnings in `currentConfigHealth` | Keep the secrets load ahead of config parsing and the health calls in `onChange` |
+| `main.go` | Shows `showConfigErrorPage` instead of exiting on a bad startup config, `waitForReadableConfig`; no v0.7 notice or glance.yml fallback; loads secrets saved from Settings before the config; `requestConfigReload` and a reload mutex; `config:validate` runs `checkConfigFile`; reloads record errors and warnings in `currentConfigHealth` | Keep the secrets load ahead of config parsing and the health calls in `onChange` |
 | `theme.go` | Theme lookups go through `themeByKey` (presets, seasonal, "default"); saves the choice to the person's profile | Keep `themeByKey` as the single lookup |
 | `api.go` | `apiPageWidgetViews` takes the user and drops widgets they can't see | Keep the `user` parameter |
 | `sse.go` | Broadcasts carry the widget ID so limited widgets aren't sent to others | Keep the widget ID argument |
@@ -57,6 +63,12 @@ These are where upstream merges can conflict. Paths are under `internal/dynacat/
 | `templates/page.html` | Kiosk script, den-app script, settings link, avatar and display name in the nav, DashDen logo, config problems banner | Small, but spread through the header |
 | `templates/footer.html`, `templates/widget-base.html`, `templates/first-run-setup.html` | DashDen name and links | Keep ours |
 | `dynacat.go` (defaults) | Default app name, favicon and app icon are DashDen's | Keep ours |
+| `dynacat.go` (pages) | `handlePageContentRequest` uses `updateWidgetsWithin` and unlocks the page when updates finish; `handleWidgetContentRequest` skips the update for a widget that just finished as a placeholder; `templateData.lateWidgets`; `pageUsage.setPath` and `pageUsage.record` | Re-apply if upstream changes page rendering |
+| `config-fields.go` | `customIconField.cacheURL` calls `cachedIconURL` instead of downloading | One call |
+| `image_cache.go` | `IsBuildingCache` leaves background icon downloads out | One line |
+| `templates/page-content.html` | Widgets render through `$.RenderWidget` | Two lines |
+| `templates/widget-base.html` | Friendly error block instead of the ERROR banner | Re-apply if upstream changes the error block |
+| `templates.go` | `friendlyWidgetError` template function | One line |
 | `templates/page-content.html` | `$.CanSeeWidget` check around each widget | Keep the check, or limited widgets leak |
 | `templates/document.html` | One line so a theme chosen on the profile wins over the browser's saved theme | Small |
 | `static/js/page.js` | Exposes `dynacatSetupDynamicRelativeTime` on `window` | One line |

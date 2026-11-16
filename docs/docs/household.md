@@ -48,7 +48,7 @@ When anyone signs in, the theme they pick is stored in DashDen's database (`serv
 
 ## Kiosk mode
 
-For a wall tablet or an old laptop in the kitchen. Open any page with `?kiosk=1` and Dynacat hides the header, navigation and footer, keeps the screen awake where the browser allows it, and hides the cursor when nobody is using it. The choice is remembered in that browser, so the tablet stays in kiosk mode after a restart.
+For a wall tablet or an old laptop in the kitchen. Open any page with `?kiosk=1` and DashDen hides the header, navigation and footer, keeps the screen awake where the browser allows it, and hides the cursor when nobody is using it. The choice is remembered in that browser, so the tablet stays in kiosk mode after a restart.
 
 - `?kiosk=1&rotate=60` also moves to the next page every 60 seconds. Rotation waits while someone is touching the screen, and moves on once the screen has been left alone for that long. Use 10 seconds or more.
 - To leave kiosk mode, double-tap the top-right corner of the screen, or open the page with `?kiosk=0`.

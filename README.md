@@ -1,15 +1,11 @@
 <p align="center"><img width="250px" src="docs/dashden-logo.png"></p>
 <h1 align="center">DashDen</h1>
 <p align="center">
-  <a href="https://dynacat.artur.zone/configuration">Configuration</a> •
-  <a href="https://discord.gg/mUqTzrfjFP">Discord</a> •
-  <a href="https://ko-fi.com/panonim">Sponsor</a> 
-</p>
-<p align="center">
-  <a href="https://github.com/Panonim/dynawidgets">Dynawidgets</a> •
-  <a href="https://github.com/glanceapp/community-widgets">Custom-api widgets</a> •
-  <a href="https://dynacat.artur.zone/preconfigured-pages">Preconfigured pages</a> •
-  <a href="https://dynacat.artur.zone/themes">Themes</a> 
+  <a href="docs/docs/getting-started.md">Getting started</a> •
+  <a href="docs/docs/configuration.md">Configuration</a> •
+  <a href="docs/docs/settings.md">Settings</a> •
+  <a href="docs/docs/themes.md">Themes</a> •
+  <a href="https://github.com/Panonim/dynawidgets">Dynawidgets</a>
 </p>
 
 <p align="center">Self-hosted dashboard built for people who want their information in one place.<br>DashDen is a personal fork of <a href="https://github.com/Panonim/dynacat">Dynacat</a> by Panonim, itself forked from Glance. It focuses on dynamic content updates and seamless integration with external applications.</p>
@@ -28,7 +24,7 @@
 * Docker containers status
 * Server stats
 * Custom widgets
-* [and many more...](https://dynacat.artur.zone/configuration#configuring-dynacat)
+* [and many more...](docs/docs/configuration.md)
 
 ### Fast and lightweight
 * Low memory usage
@@ -50,14 +46,14 @@ Because you'll want to take it with you on the go.
 ![](docs/docs/images/mobile-preview.png)
 
 ### Themeable
-Easily create your own theme by tweaking a few numbers or choose from one of the [already available themes](https://dynacat.artur.zone/themes).
+Easily create your own theme by tweaking a few numbers or choose from one of the [already available themes](docs/docs/themes.md).
 
 ![](docs/docs/images/themes-example.png)
 
 <br>
 
 ### Other features worth mentioning
-* **UI editor** - add pages, drag widgets between columns and change their options from the dashboard itself, Dynacat writes it back into your YAML
+* **UI editor** - add pages, drag widgets between columns and change their options from the dashboard itself, DashDen writes it back into your YAML
 * **Widget editor** - a visual builder for `custom-api` widgets, point it at an API and bind blocks to fields instead of writing the template by hand
 * **Dynawidgets** - ready-made widgets from a community repository, fetched and cached from a single slug
 * **JSON API** - read the data your widgets already fetched from scripts or other apps
@@ -86,53 +82,15 @@ DashDen reads `config/.env` itself at start-up, so you don't enter any variables
 
 Either way, put DashDen behind Tinyauth in your reverse proxy (see [Authentication](docs/docs/authentication.md)), then open Settings to finish setting up people and apps. If the `:main` image is private, make the package public on GitHub or run `docker login ghcr.io` on Unraid first.
 
-## Installation
-There are currently two ways to use Dynacat: the UI editor and editing YAML files manually.
-If you'd like to use the UI, here's the recommended configuration. 
+## Other ways to run it
 
-The quickest start is to grab the ready-made directory structure:
-
-```bash
-mkdir dynacat && cd dynacat && \
-curl -sL https://github.com/Panonim/dynacat-compose-template/releases/latest/download/dynacat.tar.gz | tar -xzf - && \
-docker compose up -d
-```
-
-<details>
-<summary><strong>Docker compose file</strong></summary>
-<br>
-
-```yaml
-services:
-  dynacat:
-    container_name: dynacat
-    image: panonim/dynacat
-    restart: unless-stopped
-    volumes:
-      - ./config:/app/config
-      - ./assets:/app/assets
-      - /etc/localtime:/etc/localtime:ro
-      # Optionally, also mount docker socket if you want to use the docker containers widget
-      # - /var/run/docker.sock:/var/run/docker.sock:ro
-    # You can also use the assets as non-root easily
-    # environment:
-      # - PUID=1000
-      # - PGID=1000
-    ports:
-      - 8080:8080
-    env_file: .env
-```
-</details>
-
-orr you can just be *that* guy and click here...
-
-<a href="https://github.com/Panonim/dynacat/releases/latest/download/dynacat-windows-amd64-setup.exe"><img alt="Just install button" width="200px" src="docs/docs/images/install_button.svg"></a>
+Outside Unraid, use [`docker-compose.dashden.yml`](docker-compose.dashden.yml): it runs the same image with the same `config/` and `assets/` folders.
 
 ## Configuration
-There are two ways to configure Dynacat, and they work on the same files:
+There are two ways to configure DashDen, and they work on the same files:
 
-* **UI editor** - drag widgets into columns, change their options and pick your colors from the dashboard itself. Dynacat writes the result back into your YAML. See the [UI editor documentation](https://dynacat.artur.zone/ui-editor).
-* **YAML by hand** - edit the config files directly. To learn more about how the layout works, how to add more pages and how to configure widgets, visit the [configuration documentation](https://dynacat.artur.zone/configuration#configuring-dynacat).
+* **UI editor** - drag widgets into columns, change their options and pick your colors from the dashboard itself. DashDen writes the result back into your YAML. See the [UI editor documentation](docs/docs/ui-editor.md).
+* **YAML by hand** - edit the config files directly. To learn more about how the layout works, how to add more pages and how to configure widgets, see the [configuration documentation](docs/docs/configuration.md). [Getting started](docs/docs/getting-started.md) covers splitting the config into one file per page and sharing widget files.
 
 The editor is an addition to the config file, not a replacement, so hand-written config keeps working exactly as before.
 
@@ -228,6 +186,18 @@ The editor is an addition to the config file, not a replacement, so hand-written
 
 ## Common issues
 <details>
+<summary><strong>A setting doesn't seem to do anything</strong></summary>
+
+DashDen ignores settings it doesn't recognise, but it tells you: there's a banner at the top of the dashboard for admins, a Config health card in Settings, and `docker exec dashden dashden check` lists every problem with its file and line.
+</details>
+
+<details>
+<summary><strong>The dashboard says it can't load its config</strong></summary>
+
+The page shows the error with its file and line. Fix it and save; the page turns into the dashboard on its own within a few seconds. A broken edit while DashDen is running never takes it down: it keeps the last working version and the banner says why the new one didn't load.
+</details>
+
+<details>
 <summary><strong>Requests timing out</strong></summary>
 
 The most common cause of this is when using Pi-Hole, AdGuard Home or other ad-blocking DNS services, which by default have a fairly low rate limit. Depending on the number of widgets you have in a single page, this limit can very easily be exceeded. To fix this, increase the rate limit in the settings of your DNS service.
@@ -243,7 +213,7 @@ networks:
 <details>
 <summary><strong>Broken layout for markets, bookmarks or other widgets</strong></summary>
 
-This is almost always caused by the browser extension Dark Reader. To fix this, disable dark mode for the domain where Dynacat is hosted.
+This is almost always caused by the browser extension Dark Reader. To fix this, disable dark mode for the domain where DashDen is hosted.
 </details>
 
 <details>
@@ -254,9 +224,9 @@ The most common cause of this is having a `pages` key in your `dynacat.yml` and 
 </details>
 
 <details>
-<summary><strong>Cannot embed Dynacat in an iframe</strong></summary>
+<summary><strong>Cannot embed DashDen in an iframe</strong></summary>
 
-By default Dynacat only allows itself to be embedded on the same origin (`frame-ancestors 'self'`). To allow embedding from another host such as Homepage, add the `allowed-embed-hosts` option under `server` in your `dynacat.yml`:
+By default DashDen only allows itself to be embedded on the same origin (`frame-ancestors 'self'`). To allow embedding from another host such as Homepage, add the `allowed-embed-hosts` option under `server` in your `dynacat.yml`:
 
 ```yaml
 server:
@@ -267,19 +237,3 @@ server:
 You can list multiple origins. Each entry must be a full origin including the scheme (e.g. `https://`).
 
 </details>
-
-<br>
-
-<div style='text-align: center;'>
-
-**If you like this project, please consider [sponsoring](https://ko-fi.com/panonim).**
-
-<div style="display: flex; justify-content: center;">
-  <a href="https://www.star-history.com/?repos=panonim%2Fdynacat&type=date&legend=top-left">
-   <picture>
-     <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=panonim/dynacat&type=date&theme=dark&legend=top-left" />
-     <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=panonim/dynacat&type=date&legend=top-left" />
-     <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=panonim/dynacat&type=date&legend=top-left" />
-   </picture>
-  </a>
-</div>
