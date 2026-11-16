@@ -41,6 +41,25 @@ var bentoTileAliases = map[string]string{
 	"banner": "4",
 }
 
+// Widget files written for the family apps size themselves with a CSS class
+// (bento-s, bento-w, bento-t, bento-l) so they also work on dashboards that
+// read classes. A widget's own tile wins over its class.
+var bentoClassTiles = map[string]string{
+	"bento-s": "1x1",
+	"bento-w": "2x1",
+	"bento-t": "1x2",
+	"bento-l": "2x2",
+}
+
+func bentoTileFromClass(cssClass string) string {
+	for _, class := range strings.Fields(cssClass) {
+		if tile, ok := bentoClassTiles[strings.ToLower(class)]; ok {
+			return tile
+		}
+	}
+	return ""
+}
+
 type bentoTile struct{ w, h int } // h == 0: as tall as the content
 
 func parseBentoTile(value string) (bentoTile, error) {
@@ -70,10 +89,14 @@ func parseBentoTile(value string) (bentoTile, error) {
 
 // TileAttrs gives a widget's tile size to the bento grid.
 func (w *widgetBase) TileAttrs() template.HTMLAttr {
-	if w.Tile == "" {
+	value := w.Tile
+	if value == "" {
+		value = bentoTileFromClass(w.CSSClass)
+	}
+	if value == "" {
 		return ""
 	}
-	tile, err := parseBentoTile(w.Tile)
+	tile, err := parseBentoTile(value)
 	if err != nil {
 		return ""
 	}

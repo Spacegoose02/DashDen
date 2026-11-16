@@ -83,3 +83,21 @@ pages:
 		t.Fatal("unknown layout accepted")
 	}
 }
+
+func TestTileFromCSSClass(t *testing.T) {
+	cases := map[string]string{
+		"bento-s":        `data-tile-w="1" data-tile-h="1" style="--tile-h: 1"`,
+		"bento-w":        `data-tile-w="2" data-tile-h="1" style="--tile-h: 1"`,
+		"bento-t":        `data-tile-w="1" data-tile-h="2" style="--tile-h: 2"`,
+		"shiny bento-l":  `data-tile-w="2" data-tile-h="2" style="--tile-h: 2"`,
+		"something-else": ``,
+	}
+	for class, want := range cases {
+		if got := string((&widgetBase{CSSClass: class}).TileAttrs()); got != want {
+			t.Errorf("%q: got %s, want %s", class, got, want)
+		}
+	}
+	if got := string((&widgetBase{CSSClass: "bento-l", Tile: "banner"}).TileAttrs()); got != `data-tile-w="4"` {
+		t.Errorf("tile should win over the class, got %s", got)
+	}
+}
