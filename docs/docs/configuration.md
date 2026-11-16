@@ -3658,6 +3658,7 @@ Preview:
 | collapse-after | integer | no | 7 |
 | collapse-after-rows | integer | no | 4 |
 | include-shorts | boolean | no | false |
+| api-key | string | no | `YOUTUBE_API_KEY` |
 | video-url-template | string | no | https://www.youtube.com/watch?v={VIDEO-ID} |
 
 ##### `channels`
@@ -3709,6 +3710,13 @@ Preview of `grid-cards`:
 
 ##### `include-shorts`
 When set to `false` (default), Dynacat attempts to use YouTube's unofficial `UULF` playlist to exclude Shorts from the feed. This playlist does not exist for all channels - if it returns a 404, Dynacat automatically falls back to the standard channel feed (which includes Shorts). Setting this to `true` always uses the channel feed directly.
+
+##### `api-key`
+A YouTube Data API key. YouTube's RSS feeds often answer 404 or 500 for channels that exist, so with a key DashDen reads uploads through the API instead, at one unit per channel per update (the free quota is 10,000 a day). Channels the API can't answer still try the RSS feed. When this is left out, DashDen uses the `YOUTUBE_API_KEY` environment variable if it's set.
+
+To get a key: in the Google Cloud console, create a project, enable "YouTube Data API v3", then go to Credentials > Create credentials > API key, and restrict it to that API.
+
+The last videos fetched for each channel are saved in `.dashden-cache/youtube` next to your config, so a bad hour or a restart still shows them.
 
 ##### `video-url-template`
 Used to replace the default link for videos. Useful when you're running your own YouTube front-end. Example:
