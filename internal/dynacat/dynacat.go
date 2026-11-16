@@ -439,7 +439,7 @@ func newApplication(c *config) (*application, error) {
 
 	config.Branding.FaviconURL = ternary(
 		config.Branding.FaviconURL == "",
-		app.StaticAssetPath("favicon.svg"),
+		app.StaticAssetPath("favicon.png"),
 		app.resolveUserDefinedAssetPath(config.Branding.FaviconURL),
 	)
 
@@ -450,11 +450,11 @@ func newApplication(c *config) (*application, error) {
 	)
 
 	if config.Branding.AppName == "" {
-		config.Branding.AppName = "Dynacat"
+		config.Branding.AppName = "DashDen"
 	}
 
 	if config.Branding.AppIconURL == "" {
-		config.Branding.AppIconURL = app.StaticAssetPath("app-icon.svg")
+		config.Branding.AppIconURL = app.StaticAssetPath("app-icon.png")
 	}
 
 	if config.Branding.AppBackgroundColor == "" {

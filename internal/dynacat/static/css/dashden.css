@@ -1,0 +1,5 @@
+/* DashDen look. Upstream stylesheets stay untouched; overrides live here. */
+
+.logo img.logo-default {
+    max-height: 3.6rem;
+}
