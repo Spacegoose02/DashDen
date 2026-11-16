@@ -125,19 +125,52 @@ pages:
 
 The `$include` directive can be used anywhere in the config file, not just in the `pages` property, however it must be on its own line and have the appropriate indentation.
 
-If you encounter YAML parsing errors when using the `$include` directive, the reported line numbers will likely be incorrect. This is because the inclusion of files is done before the YAML is parsed, as YAML itself does not support file inclusion. To help with debugging in cases like this, you can use the `config:print` command and pipe it into `less -N` to see the full config file with includes resolved and line numbers added:
+#### Reusing a widget file with different values
 
-```sh
-dynacat --config /path/to/dynacat.yml config:print | less -N
+One file can serve many widgets that only differ in a title, a feed or a URL. Pass the values under `with:` right below the include:
+
+```yaml
+widgets:
+  - $include: widgets/subreddit.yml
+    with:
+      title: /r/history
+      feed: ${HISTORY_FEED}
+  - $include: widgets/subreddit.yml
+    with:
+      title: /r/science
+      feed: ${SCIENCE_FEED}
+      limit: 5
 ```
 
-This is a bit more convoluted when running Dynacat inside a Docker container:
+`widgets/subreddit.yml` uses them as `${arg:name}`. A default goes after a bar, as in `${arg:limit|10}`:
 
-```sh
-docker run --rm -v ./dynacat.yml:/app/config/dynacat.yml Panonim/dynacat config:print | less -N
+```yaml
+- type: rss
+  title: ${arg:title}
+  limit: ${arg:limit|10}
+  feeds:
+    - url: ${arg:feed}
 ```
 
-This assumes that the config you want to print is in your current working directory and is named `dynacat.yml`.
+If the file uses a value the include doesn't pass and has no default, DashDen won't load the config and names the missing value. The UI editor can move or remove these widgets but won't edit them, because a change would apply to every widget that shares the file.
+
+#### Checking the config
+
+DashDen warns about any setting it doesn't recognise, such as a typo (`titel`) or a section indented under the wrong parent (`auth:` inside `server:`). The warnings name the file and line, even inside included files, and suggest the setting you probably meant. People who can open Settings see them in a banner at the top of the dashboard, and they're in the log.
+
+To list every problem without restarting, run:
+
+```sh
+docker exec dashden dashden check
+```
+
+Outside Docker, run `dashden --config /path/to/dynacat.yml check`. It also lists every `${VARIABLE}` the config uses that isn't set. If an edit breaks the config while DashDen is running, it keeps showing the last version that worked and the banner says why the new one didn't load.
+
+To see the whole config with every include filled in, use `config:print`:
+
+```sh
+docker exec dashden dashden config:print | less -N
+```
 
 ## Icons
 
