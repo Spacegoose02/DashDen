@@ -9,4 +9,5 @@
     {{ if .PrimaryColor }}--color-primary: {{ .PrimaryColor.String | safeCSS }};{{ end }}
     {{ if .PositiveColor }}--color-positive: {{ .PositiveColor.String | safeCSS }};{{ end }}
     {{ if .NegativeColor }}--color-negative: {{ .NegativeColor.String | safeCSS }};{{ end }}
+    {{ .StyleCSS }}
 }

@@ -37,6 +37,7 @@ New behaviour goes in **new files**. An upstream file only gets a short hook tha
 | Live updates: notice boards, den apps, shared to-do lists and config changes reach every open screen | `live-updates.go` | |
 | Shared database waits instead of failing with "database is locked" | `sqlite-open.go` | |
 | Undo in the editor right after a change | `editor-undo.go` | |
+| Built-in themes and theme styles (glass, neon, kids and more) | `theme-styles.go`, `static/css/theme-styles.css` | `themes.md` |
 | Docker image, Unraid template and compose, upstream watch | `.github/workflows/upstream-watch.yml`, `docker-compose.dashden.yml`, `unraid/` | `README.md` |
 
 Every Go file above has a `_test.go` next to it.
@@ -47,13 +48,13 @@ These are where upstream merges can conflict. Paths are under `internal/dynacat/
 
 | File | What DashDen changed | If upstream changes it |
 | ---- | -------------------- | ---------------------- |
-| `config.go` | `auth.proxy`, `theme.seasonal` and `household` fields; proxy auth counts as a sign-in method; calls `validateProxyAuthConfig` and `validateHousehold`; `recursiveParseYAMLIncludes` calls `parseYAMLIncludesWithArgs`, a line-by-line version that reads `with:` blocks | Keep the three fields and the two validate calls; port upstream include changes into `parseYAMLIncludesWithArgs` and mirror them in `recursiveConfigLineMap` |
+| `config.go` | `auth.proxy`, `theme.seasonal`, `theme.builtin-themes` and `household` fields; proxy auth counts as a sign-in method; calls `validateProxyAuthConfig` and `validateHousehold`; `recursiveParseYAMLIncludes` calls `parseYAMLIncludesWithArgs`, a line-by-line version that reads `with:` blocks | Keep the three fields and the two validate calls; port upstream include changes into `parseYAMLIncludesWithArgs` and mirror them in `recursiveConfigLineMap` |
 | `config-editor.go` | `widgetSlot` gains `shared`/`sharedCount`; includes with `with:` become shared slots; edit, remove and move call `checkSharedSlot` | Re-apply the four hooks |
 | `cli.go` | `check` and `config:check` run the config check | Small |
 | `auth.go` | `authenticatedUser` gains `Name`, `Email`, `IsProxy`, `member` and `DisplayName()`; `getAuthenticatedUser` wraps the result in `withHousehold` and tries the proxy headers | The upstream function body becomes `getSignedInUser`; re-apply the wrapper |
 | `dynacat.go` | Settings, people, apps and themes routes; `widgetAccessByID` filled by `registerWidget`; `userPrefs`, `noticeStorage`, `todoPerPerson`; per-person keys in `authorizeTodoRequest`; seasonal and profile theme in `populateTemplateRequestData` | The biggest risk. Re-apply route blocks and fields by hand; run `go test ./...` |
 | `main.go` | Shows `showConfigErrorPage` instead of exiting on a bad startup config, `waitForReadableConfig`; no v0.7 notice or glance.yml fallback; loads secrets saved from Settings before the config; `requestConfigReload` and a reload mutex; `config:validate` runs `checkConfigFile`; reloads record errors and warnings in `currentConfigHealth` | Keep the secrets load ahead of config parsing and the health calls in `onChange` |
-| `theme.go` | Theme lookups go through `themeByKey` (presets, seasonal, "default"); saves the choice to the person's profile | Keep `themeByKey` as the single lookup |
+| `theme.go` | Theme lookups go through `themeByKey` (presets, seasonal, "default"); saves the choice to the person's profile; `name`, `style` and `wallpaper` fields and `StyleCSS` | Keep `themeByKey` as the single lookup |
 | `api.go` | `apiPageWidgetViews` takes the user and drops widgets they can't see | Keep the `user` parameter |
 | `sse.go` | Broadcasts carry the widget ID so limited widgets aren't sent to others; `sseHello` greets each connection with the server start time | Keep the widget ID argument and the hello |
 | `config-editor.go` | `unescapeEmoji` when writing YAML so emoji stay readable | Keep the call in `marshalDocument` |
@@ -81,7 +82,9 @@ These are where upstream merges can conflict. Paths are under `internal/dynacat/
 | `static/js/page.js` | Exposes `dynacatSetupDynamicRelativeTime` on `window`; the SSE handler passes to-do changes on and reloads after a config change | Small |
 | `static/js/editor.js` | Live theme preview in the styling modal, dynawidgets owner, `offerUndo` after a save | Re-apply if upstream rewrites the modal |
 | `static/css/site.css` | Kiosk styles at the end | Append-only |
-| `static/css/main.css` | Imports `config-problems.css` and `dashden.css` | Two lines |
+| `static/css/main.css` | Imports `config-problems.css`, `dashden.css` and `theme-styles.css` | Three lines |
+| `templates/theme-style.gotmpl`, `templates/theme-preset-preview.html` | The theme's `StyleCSS`; the name on picker buttons | One line each |
+| `dynacat.go` (themes) | `withBuiltinThemes` after the presets merge | Three lines |
 | `static/css/widgets.css` | Imports `widget-den-app.css` | One line |
 | `.github/workflows/deploy.yml` | Builds the DashDen image | Small |
 | `README.md` | DashDen branding | Keep ours |

@@ -76,6 +76,7 @@ type config struct {
 		CustomCSSFile   string `yaml:"custom-css-file"`
 
 		DisablePicker bool                                     `yaml:"disable-picker"`
+		BuiltinThemes *bool                                    `yaml:"builtin-themes"` // DashDen
 		Presets       orderedYAMLMap[string, *themeProperties] `yaml:"presets"`
 		Seasonal      []seasonalTheme                          `yaml:"seasonal"`
 	} `yaml:"theme"`

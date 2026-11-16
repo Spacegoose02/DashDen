@@ -1,5 +1,55 @@
 # Themes
 
+## Built-in themes
+
+DashDen comes with 27 themes that everyone can pick from the theme picker, next to any presets in your config. Each person's choice is saved to their profile. A theme is more than colors: its **style** sets corner rounding, glass, glow, wallpaper, font and text size. Styles work over every page layout.
+
+| Group | Themes |
+| ----- | ------ |
+| Everyday | Cozy Den, Latte, Glass, Aurora, Daylight, Midnight, Minimal, High Contrast |
+| Loud | Neon Night, Neon City, Laser Red, Laser Grid, Pink Velvet, Rose Noir, Bubblegum, Retro Wave, Retro 70s, Arcade, Nuclear, Hazard, Terminal |
+| Kids (bigger text, rounder, brighter) | Playroom, Rainbow, Dino, Under the Sea, Space Explorer, Unicorn |
+
+A preset in your config with the same key as a built-in theme replaces it. To hide the built-in themes:
+
+```yaml
+theme:
+  builtin-themes: false
+```
+
+### Styles for your own themes
+
+Any preset, and the main theme, can use a style, a display name and a wallpaper:
+
+```yaml
+theme:
+  presets:
+    beach:
+      name: Beach day
+      style: glass
+      wallpaper: /assets/beach.jpg
+      background-color: 200 40 12
+      primary-color: 190 90 60
+```
+
+| Style | Look |
+| ----- | ---- |
+| `classic` | DashDen's original look (the default) |
+| `cozy` | Rounded cards, soft shadows, rounded font, warm glow |
+| `glass` | Frosted see-through cards over a colorful wallpaper |
+| `neon` | Glowing borders and titles |
+| `laser` | Sharp, bright outlines over a laser grid |
+| `velvet` | Very round cards with a soft pink-friendly glow |
+| `retro` | Chunky offset shadows, sunset wallpaper, scanlines |
+| `nuclear` | Hazard stripes and radioactive glow |
+| `terminal` | Square, monospace, with scanlines |
+| `soft` | Borderless cards that float on shadows |
+| `flat` | Plain, borderless cards |
+| `bold` | Thick, high-contrast borders |
+| `kids` | Bigger text and tap targets, very round, playful shapes |
+
+`wallpaper` takes an `http(s)://` URL or a path starting with `/`, such as a file in your assets folder.
+
 ## Den theme pack
 
 Settings, Themes has eleven ready-made themes: Den Night, Campfire, Forest, Ocean, Candy, Paper, Sunny, High Contrast, and three seasonal ones (Spooky, Winter Holidays, Spring). Tick the ones you want and press **Add selected themes**. They're copied into `theme.presets`, so they appear in the theme picker, can be set as someone's theme on the People tab, and can be edited like any other preset.

@@ -209,6 +209,9 @@ func newApplication(c *config) (*application, error) {
 			return nil, fmt.Errorf("creating theme presets: %v", err)
 		}
 		config.Theme.Presets = *themePresets.Merge(&config.Theme.Presets)
+		if config.Theme.BuiltinThemes == nil || *config.Theme.BuiltinThemes {
+			config.Theme.Presets = *withBuiltinThemes(&config.Theme.Presets) // DashDen
+		}
 
 		for key, properties := range config.Theme.Presets.Items() {
 			properties.Key = key
