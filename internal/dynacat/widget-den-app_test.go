@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -21,7 +22,7 @@ type denMock struct {
 func newDenMock(t *testing.T) (*denMock, *httptest.Server) {
 	m := &denMock{status: "pending"}
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("Authorization") != "Bearer tok" {
+		if a := r.Header.Get("Authorization"); a != "Bearer tok" && !(a == "Bot tok" && strings.HasPrefix(r.URL.Path, "/api/bot/")) {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
@@ -58,6 +59,28 @@ func newDenMock(t *testing.T) (*denMock, *httptest.Server) {
 		case "GET /api/family/now-playing":
 			json.NewEncoder(w).Encode([]map[string]any{
 				{"name": "Leo", "device": "Switch", "title": "Kart", "coverUrl": "/covers/kart.jpg", "href": "/games/1", "remainingSeconds": 1500},
+			})
+		case "GET /api/v1/homes/h1/parent-duty":
+			json.NewEncoder(w).Encode([]map[string]any{
+				{"id": "d1", "title": "Fix sink", "status": "doing", "dueDate": nil},
+				{"id": "d2", "title": "Call <dentist>", "status": "todo", "dueDate": "2000-01-01"},
+				{"id": "d3", "title": "Finished", "status": "done"},
+			})
+		case "GET /api/homes/h1/items":
+			json.NewEncoder(w).Encode([]map[string]any{
+				{"id": "i1", "name": "Flour", "quantity": 0.5, "unit": "kg"},
+				{"id": "i2", "name": "Milk", "onShoppingList": true},
+			})
+		case "GET /api/time-requests":
+			json.NewEncoder(w).Encode([]map[string]any{
+				{"id": 7, "name": "Leo", "minutes": 30, "note": "one more race", "state": "pending"},
+				{"id": 6, "name": "Mia", "minutes": 15, "state": "declined"},
+			})
+		case "GET /api/bot/v1/channels/42/messages":
+			json.NewEncoder(w).Encode([]map[string]any{
+				{"body": "On my way", "createdAt": "2026-11-16T01:00:00.000Z", "author": map[string]any{"displayName": "Mom"}},
+				{"body": "secret", "keyVersion": 2, "createdAt": "2026-11-16T01:01:00.000Z", "author": map[string]any{"displayName": "Leo"}},
+				{"body": "", "deleted": true, "createdAt": "2026-11-16T01:02:00.000Z"},
 			})
 		default:
 			if r.Method == http.MethodGet {
@@ -255,5 +278,103 @@ func TestDenNow(t *testing.T) {
 	html := string(w.Render())
 	if !strings.Contains(html, "Leo is playing") || !strings.Contains(html, "Couldn't reach Broken") {
 		t.Fatalf("render:\n%s", html)
+	}
+}
+
+func TestDenAppViewsValidate(t *testing.T) {
+	for _, w := range []*denAppWidget{
+		{App: "wavelength", URL: "http://x", Token: "t", View: "low"},
+		{App: "den-duty", URL: "http://x", Token: "t", HomeID: "h", View: "low"},
+		{App: "dendrop", URL: "http://x", Token: "t"},
+	} {
+		if err := w.initialize(); err == nil {
+			t.Fatalf("%s with view %q should be refused", w.App, w.View)
+		}
+	}
+}
+
+func TestDenDutyParentDuty(t *testing.T) {
+	m, srv := newDenMock(t)
+	w := &denAppWidget{App: "den-duty", View: "parent-duty", URL: srv.URL, Token: "tok", HomeID: "h1"}
+	if err := w.initialize(); err != nil {
+		t.Fatal(err)
+	}
+	w.update(context.Background())
+	if w.Title != "Parent to-dos" || len(w.Duties) != 2 || w.Duties[0].ID != "d2" || w.Duties[0].Due() != "Overdue" {
+		t.Fatalf("done cards should be hidden and dated ones first: %+v", w.Duties)
+	}
+	if html := string(w.Render()); !strings.Contains(html, "Call &lt;dentist&gt;") {
+		t.Fatalf("render:\n%s", html)
+	}
+	if rec := pressDenButton(w, "done", `{"id":"d2"}`); rec.Code != http.StatusOK {
+		t.Fatalf("done: %d %s", rec.Code, rec.Body)
+	}
+	if !slices.Contains(m.calls, "PATCH /api/v1/homes/h1/parent-duty/d2") || !slices.Contains(m.bodies, `{"status":"done"}`) {
+		t.Fatalf("calls: %v %v", m.calls, m.bodies)
+	}
+}
+
+func TestNinjaLow(t *testing.T) {
+	m, srv := newDenMock(t)
+	w := &denAppWidget{App: "nighttime-ninja", View: "low", URL: srv.URL, Token: "tok", HomeID: "h1"}
+	if err := w.initialize(); err != nil {
+		t.Fatal(err)
+	}
+	w.update(context.Background())
+	if len(w.Low) != 2 || w.Low[0].Left() != "0.5 kg left" || w.Low[1].Left() != "low" {
+		t.Fatalf("low: %+v", w.Low)
+	}
+	if rec := pressDenButton(w, "add", `{"id":"i1"}`); rec.Code != http.StatusOK {
+		t.Fatalf("add: %d %s", rec.Code, rec.Body)
+	}
+	if !slices.Contains(m.bodies, `{"text":"Flour"}`) {
+		t.Fatalf("the item's own name should be added: %v", m.bodies)
+	}
+	if rec := pressDenButton(w, "add", `{"id":"nope"}`); rec.Code != http.StatusBadRequest {
+		t.Fatal("unknown items should be refused")
+	}
+}
+
+func TestLootDenTimeAsks(t *testing.T) {
+	m, srv := newDenMock(t)
+	w := &denAppWidget{App: "lootden", URL: srv.URL, Token: "tok", ApproveGroups: []string{"adult"}}
+	if err := w.initialize(); err != nil {
+		t.Fatal(err)
+	}
+	w.update(context.Background())
+	if len(w.TimeAsks) != 1 || w.TimeAsks[0].ID != 7 {
+		t.Fatalf("only pending asks: %+v", w.TimeAsks)
+	}
+	// Nobody is signed in here, so the approve-groups check refuses it.
+	if rec := pressDenButton(w, "approve", `{"id":"7"}`); rec.Code != http.StatusBadRequest {
+		t.Fatalf("approve without a grown-up: %d", rec.Code)
+	}
+	w.ApproveGroups = nil
+	if rec := pressDenButton(w, "approve", `{"id":"7"}`); rec.Code != http.StatusOK {
+		t.Fatalf("approve: %d %s", rec.Code, rec.Body)
+	}
+	if !slices.Contains(m.calls, "POST /api/time-requests/7/approve") {
+		t.Fatalf("calls: %v", m.calls)
+	}
+}
+
+func TestDendropQuickMessages(t *testing.T) {
+	m, srv := newDenMock(t)
+	w := &denAppWidget{App: "dendrop", URL: srv.URL, Token: "tok", Channel: "42", Messages: []string{"Dinner's ready!", " "}}
+	if err := w.initialize(); err != nil {
+		t.Fatal(err)
+	}
+	w.update(context.Background())
+	if w.Error != nil || len(w.Chat) != 2 || w.Chat[1].Text() != "🔒 Encrypted message" || len(w.Messages) != 1 {
+		t.Fatalf("chat: %+v %v %v", w.Chat, w.Messages, w.Error)
+	}
+	if rec := pressDenButton(w, "post", `{"id":"0"}`); rec.Code != http.StatusOK {
+		t.Fatalf("post: %d %s", rec.Code, rec.Body)
+	}
+	if !slices.Contains(m.calls, "POST /api/bot/v1/channels/42/messages") || !slices.Contains(m.bodies, `{"content":"Dinner's ready!"}`) {
+		t.Fatalf("calls: %v %v", m.calls, m.bodies)
+	}
+	if rec := pressDenButton(w, "post", `{"id":"1"}`); rec.Code != http.StatusBadRequest {
+		t.Fatal("only configured messages can be sent")
 	}
 }

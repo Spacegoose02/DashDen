@@ -2,7 +2,85 @@
 
 {{- define "widget-content" }}
 <div class="den-app" data-den-widget="{{ .GetID }}">
-{{- if eq .App "den-duty" }}
+{{- if eq .View "parent-duty" }}
+    {{- if not .Duties }}
+    <p class="color-subdue">All caught up. 🎉</p>
+    {{- else }}
+    <ul class="list list-gap-8 collapsible-container" data-collapse-after="{{ .CollapseAfter }}">
+        {{- range .Duties }}
+        <li class="den-app-row flex items-center gap-10">
+            <span class="den-app-icon shrink-0" aria-hidden="true">{{ if eq .Status "doing" }}🔧{{ else }}📝{{ end }}</span>
+            <div class="min-width-0 grow">
+                <div class="color-highlight text-truncate">{{ .Title }}</div>
+                {{- if .Due }}<div class="size-h6 {{ if .Late }}color-negative{{ else }}color-subdue{{ end }}">{{ .Due }}</div>{{ end }}
+            </div>
+            <button type="button" class="den-app-button" data-den-action="done" data-id="{{ .ID }}">Done</button>
+        </li>
+        {{- end }}
+    </ul>
+    {{- end }}
+
+{{- else if eq .View "low" }}
+    {{- if not .Low }}
+    <p class="color-subdue">The pantry's stocked. 👍</p>
+    {{- else }}
+    <ul class="list list-gap-8 collapsible-container" data-collapse-after="{{ .CollapseAfter }}">
+        {{- range .Low }}
+        <li class="den-app-row flex items-center gap-10">
+            <span class="den-app-icon shrink-0" aria-hidden="true">{{ if .Icon }}{{ .Icon }}{{ else }}•{{ end }}</span>
+            <div class="min-width-0 grow">
+                <div class="color-highlight text-truncate">{{ .Name }}</div>
+                <div class="size-h6 color-subdue">{{ .Left }}</div>
+            </div>
+            {{- if .OnShoppingList }}
+            <span class="den-app-check color-positive size-h6">✓ on the list</span>
+            {{- else }}
+            <button type="button" class="den-app-button" data-den-action="add" data-id="{{ .ID }}" aria-label="Add {{ .Name }} to the shopping list">Add</button>
+            {{- end }}
+        </li>
+        {{- end }}
+    </ul>
+    {{- end }}
+
+{{- else if eq .App "lootden" }}
+    {{- if not .TimeAsks }}
+    <p class="color-subdue">🎮 No asks right now.</p>
+    {{- else }}
+    <ul class="list list-gap-10">
+        {{- range .TimeAsks }}
+        <li class="den-app-row flex items-center gap-10">
+            <div class="min-width-0 grow">
+                <div class="text-truncate"><span class="color-highlight">{{ .Name }}</span> wants <span class="color-primary">{{ .Minutes }} more min</span></div>
+                {{- if .Note }}<div class="size-h6 color-subdue text-truncate">“{{ .Note }}”</div>{{ end }}
+            </div>
+            <button type="button" class="den-app-button den-app-button-primary" data-den-action="approve" data-id="{{ .ID }}">Yes</button>
+            <button type="button" class="den-app-button" data-den-action="decline" data-id="{{ .ID }}">No</button>
+        </li>
+        {{- end }}
+    </ul>
+    {{- end }}
+
+{{- else if eq .App "dendrop" }}
+    <div class="flex flex-wrap gap-10">
+        {{- range $i, $m := .Messages }}
+        <button type="button" class="den-app-button den-app-button-primary" data-den-action="post" data-id="{{ $i }}">{{ $m }}</button>
+        {{- end }}
+    </div>
+    {{- if .Chat }}
+    <ul class="list list-gap-10 margin-top-15">
+        {{- range .Chat }}
+        <li>
+            <div class="flex justify-between gap-10 size-h6">
+                <span class="color-highlight text-truncate">{{ .Who }}</span>
+                <span class="color-subdue shrink-0" {{ dynamicRelativeTimeAttrs .Time }}></span>
+            </div>
+            <div class="text-truncate-2-lines">{{ .Text }}</div>
+        </li>
+        {{- end }}
+    </ul>
+    {{- end }}
+
+{{- else if eq .App "den-duty" }}
     {{- if not .Kids }}
     <p class="color-subdue">No chores today.</p>
     {{- end }}

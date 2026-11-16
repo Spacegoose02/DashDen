@@ -18,7 +18,7 @@ New behaviour goes in **new files**. An upstream file only gets a short hook tha
 | Household: names, avatars, roles, a home page per person | `household.go` | `household.md` |
 | Theme follows the person across devices | `user-prefs.go` | `themes.md` |
 | Settings screen: secrets, history and undo, People, Sign-in, Access, Apps, Server, Themes, recovery code | `settings-*.go`, `templates/settings*.html`, `static/js/settings.js`, `static/css/settings.css` | `settings.md` |
-| Den app widgets (Den Duty, Nighttime Ninja, Wavelength) and Now in the Den | `widget-den-app.go`, `widget-den-now.go`, `templates/den-*.html`, `static/js/den-app.js`, `static/css/widget-den-app.css` | `configuration.md` |
+| Den app widgets (Den Duty, Nighttime Ninja, Wavelength, LootDen, Dendrop) and Now in the Den | `widget-den-app.go`, `widget-den-app-more.go`, `widget-den-now.go`, `templates/den-*.html`, `static/js/den-app.js`, `static/css/widget-den-app.css` | `configuration.md` |
 | Per-widget `allowed-users` / `allowed-groups` | `widget-access.go` | `shared-widget-options.md` |
 | Den theme pack and seasonal themes | `theme-seasonal.go`, `settings-themes.go` | `themes.md` |
 | Notice board | `widget-notice-board.go`, `notice-storage.go`, `templates/notice-board.html` | `configuration.md` |
