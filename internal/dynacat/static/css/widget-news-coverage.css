@@ -1,0 +1,137 @@
+/* DashDen: news-coverage widget (widget-news-coverage.go) */
+.news-coverage {
+    --nc-left: hsl(214, 70%, 58%);
+    --nc-center: hsl(0, 0%, 62%);
+    --nc-right: hsl(0, 68%, 60%);
+    --nc-unrated: var(--color-separator);
+}
+
+.nc-balance {
+    margin-bottom: 1.6rem;
+}
+
+.nc-bar {
+    display: flex;
+    gap: 2px;
+    height: 0.6rem;
+    margin-top: 0.5rem;
+    border-radius: 0.3rem;
+    overflow: hidden;
+}
+
+.nc-bar > span { flex-basis: 0; min-width: 4px; }
+.nc-bar-left { background: var(--nc-left); }
+.nc-bar-center { background: var(--nc-center); }
+.nc-bar-right { background: var(--nc-right); }
+.nc-bar-unrated { background: var(--nc-unrated); }
+
+.nc-bar-legend {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 0.4rem;
+}
+
+.nc-legend-left { color: var(--nc-left); }
+.nc-legend-center { color: var(--nc-center); }
+.nc-legend-right { color: var(--nc-right); }
+
+.nc-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 1.4rem;
+}
+
+.nc-tab-input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.nc-tab {
+    cursor: pointer;
+    padding-bottom: 0.4rem;
+    margin-bottom: 1.2rem;
+    border-bottom: 2px solid transparent;
+    color: var(--color-text-subdue);
+}
+
+.nc-tab-input:checked + .nc-tab {
+    color: var(--color-text-highlight);
+    border-bottom-color: var(--color-primary);
+}
+
+.nc-tab-input:focus-visible + .nc-tab {
+    outline: 1px dashed var(--color-primary);
+    outline-offset: 2px;
+}
+
+.nc-panel {
+    display: none;
+    flex-basis: 100%;
+    min-width: 0;
+}
+
+.nc-tab-input:not(.nc-tab-input-blind):checked ~ .nc-panel-all,
+.nc-tab-input-blind:checked ~ .nc-panel-blind {
+    display: block;
+}
+
+.nc-blind-help { margin-bottom: 1rem; }
+
+.nc-sources > summary {
+    cursor: pointer;
+    list-style: none;
+    margin-top: 0.4rem;
+}
+
+.nc-sources > summary::-webkit-details-marker { display: none; }
+
+.nc-sources > summary::after {
+    content: ' ▾';
+}
+
+.nc-sources[open] > summary::after {
+    content: ' ▴';
+}
+
+.nc-badge {
+    display: inline-block;
+    padding: 0 0.5rem;
+    border-radius: 0.3rem;
+    border: 1px solid currentColor;
+    font-size: 0.85em;
+}
+
+.nc-badge-left { color: var(--nc-left); }
+.nc-badge-right { color: var(--nc-right); }
+
+.nc-articles {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+    margin-top: 0.9rem;
+    padding-left: 0.9rem;
+    border-left: 2px solid var(--color-separator);
+}
+
+.nc-article-title {
+    display: block;
+    margin-top: 0.2rem;
+    color: var(--color-text-base);
+}
+
+.nc-article-title:hover { color: var(--color-primary); }
+
+.nc-dot {
+    width: 0.8rem;
+    height: 0.8rem;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: var(--nc-unrated);
+}
+
+.nc-dot-left { background: var(--nc-left); }
+.nc-dot-lean-left { background: var(--nc-left); opacity: 0.6; }
+.nc-dot-center { background: var(--nc-center); }
+.nc-dot-lean-right { background: var(--nc-right); opacity: 0.6; }
+.nc-dot-right { background: var(--nc-right); }
