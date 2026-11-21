@@ -2066,6 +2066,64 @@ How long a note stays before it is removed, such as `12h` or `3d`.
 ##### `max-notes`
 The most notes shown at once. Older notes beyond this are hidden until newer ones expire.
 
+### News Coverage
+
+Groups headlines from your news feeds into stories and shows how each story is covered across the political spectrum, like Ground News. Each story gets a coverage bar (left in blue, center in grey, right in red) and a source count; tap the count to see every outlet that ran it, with the outlet's lean and factuality. The **Blindspots** tab lists stories that nearly all come from one side, and the bar at the top shows the overall lean of your feeds.
+
+The outlet is worked out from each article's link, so feeds that pass through an aggregator still work. With FreshRSS, open a saved query, choose **Share**, turn on RSS and paste the link here. Google News feeds work too: the outlet's name at the end of the headline is used.
+
+Example:
+
+```yaml
+- type: news-coverage
+  title: Top Stories
+  feeds:
+    # Each saved query's RSS link from FreshRSS's Share menu
+    - url: https://freshrss.example.com/i/?a=rss&...
+    - url: https://freshrss.example.com/i/?a=rss&...
+  window: 48h
+  sources:
+    localpaper.com: lean-right
+    citynews.org: { bias: center, name: City News, factuality: high }
+```
+
+#### Properties
+
+| Name | Type | Required | Default |
+| ---- | ---- | -------- | ------- |
+| feeds | array | yes | |
+| sources | map | no | |
+| builtin-ratings | boolean | no | true |
+| window | duration | no | 48h |
+| limit | integer | no | 20 |
+| collapse-after | integer | no | 5 |
+| min-sources | integer | no | 1 |
+| blindspot-share | number | no | 0.8 |
+| blindspot-min-sources | integer | no | 3 |
+| similarity | number | no | 0.4 |
+| hide-balance | boolean | no | false |
+
+##### `feeds`
+The same as the [RSS widget's `feeds`](#rss): each entry takes `url`, and optionally `title`, `limit` and `headers`.
+
+##### `sources`
+Rate outlets the built-in list misses, or change a rating you disagree with. The key is the outlet's web domain (subdomains match, so `cnn.com` also covers `edition.cnn.com`). The value is a lean, `left`, `lean-left`, `center`, `lean-right` or `right`, or a map with `bias`, `name` and `factuality`.
+
+##### `builtin-ratings`
+DashDen ships rough ratings for about 150 well-known outlets, placed where public media-bias charts commonly put them. They are DashDen's own estimates, not any rating service's data. Set this to `false` to use only your `sources`.
+
+##### `window`
+How far back to look for articles, such as `24h` or `3d`.
+
+##### `min-sources`
+Only show stories covered by at least this many outlets. `2` hides stories only one outlet ran.
+
+##### `blindspot-share` and `blindspot-min-sources`
+A story is a blindspot when at least `blindspot-min-sources` rated outlets cover it and at least this share of them (0.8 means 80%) are from one side.
+
+##### `similarity`
+How alike two headlines must be to count as the same story, from 0 to 1. Lower it if one story shows up as several, raise it if different stories get grouped.
+
 ### Extension
 Display a widget provided by an external source (3rd party). If you want to learn more about developing extensions, checkout the [extensions documentation](extensions.md) (WIP).
 
