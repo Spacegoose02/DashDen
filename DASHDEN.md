@@ -21,6 +21,7 @@ New behaviour goes in **new files**. An upstream file only gets a short hook tha
 | Den app widgets (Den Duty, Nighttime Ninja, Wavelength, LootDen, Dendrop) and Now in the Den | `widget-den-app.go`, `widget-den-app-more.go`, `widget-den-now.go`, `templates/den-*.html`, `static/js/den-app.js`, `static/css/widget-den-app.css` | `configuration.md` |
 | Per-widget `allowed-users` / `allowed-groups` | `widget-access.go` | `shared-widget-options.md` |
 | Den theme pack and seasonal themes | `theme-seasonal.go`, `settings-themes.go` | `themes.md` |
+| News coverage: stories grouped across outlets, left/center/right coverage bars, blindspots | `widget-news-coverage.go`, `news-outlet-ratings.go`, `templates/news-coverage.html`, `static/css/widget-news-coverage.css` | `configuration.md` |
 | Notice board | `widget-notice-board.go`, `notice-storage.go`, `templates/notice-board.html` | `configuration.md` |
 | Per-person to-do lists | hook in `widget-todo.go`, `dynacat.go` | `configuration.md` |
 | Kiosk mode for wall tablets | `static/js/kiosk.js` | `household.md` |
@@ -61,11 +62,11 @@ These are where upstream merges can conflict. Paths are under `internal/dynacat/
 | `config-editor.go` | `unescapeEmoji` when writing YAML so emoji stay readable | Keep the call in `marshalDocument` |
 | `editor-http.go` | Dynawidgets `owner` query parameter; a save answers with `X-DashDen-Undo` | Small |
 | `widget-dynawidgets.go` | `owner` option and `DYNAWIDGETS_OWNER`, repo keys as `owner~branch` | Re-apply if upstream reworks repo keys |
-| `widget.go` | `case` lines for `den-app`, `den-now`, `notice-board`; `widgetAccess` inline in `widgetBase`; `Tile` field | Small |
+| `widget.go` | `case` lines for `den-app`, `den-now`, `notice-board`, `news-coverage`; `widgetAccess` inline in `widgetBase`; `Tile` field | Small |
 | `widget-container.go` | `checkNestedWidgetAccess` for groups and split columns | Small |
 | `widget-search.go` | Widgets limited to some people stay out of search | Small |
 | `widget-todo.go` | `per-person` option | Small |
-| `widget-schema.go` | Editor hints for the new widgets and common `allowed-*` fields | Merge entries; watch for duplicate keys |
+| `widget-schema.go` | Editor hints for the new widgets (including `news-coverage`) and common `allowed-*` fields | Merge entries; watch for duplicate keys |
 | `templates/page.html` | Kiosk script, den-app script, nav-overflow, pwa and bento scripts, Wide view button, settings link, avatar and display name in the nav, DashDen logo, config problems banner | Small, but spread through the header |
 | `templates/footer.html`, `templates/widget-base.html`, `templates/first-run-setup.html` | DashDen name and links | Keep ours |
 | `dynacat.go` (defaults) | Default app name, favicon and app icon are DashDen's | Keep ours |
@@ -86,7 +87,7 @@ These are where upstream merges can conflict. Paths are under `internal/dynacat/
 | `static/css/main.css` | Imports `config-problems.css`, `dashden.css`, `theme-styles.css` and `bento.css` | Four lines |
 | `templates/theme-style.gotmpl`, `templates/theme-preset-preview.html` | The theme's `StyleCSS`; the name on picker buttons | One line each |
 | `dynacat.go` (themes) | `withBuiltinThemes` after the presets merge | Three lines |
-| `static/css/widgets.css` | Imports `widget-den-app.css` | One line |
+| `static/css/widgets.css` | Imports `widget-den-app.css` and `widget-news-coverage.css` | One line |
 | `.github/workflows/deploy.yml` | Builds the DashDen image | Small |
 | `README.md` | DashDen branding | Keep ours |
 

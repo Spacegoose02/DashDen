@@ -1,0 +1,76 @@
+{{ template "widget-base.html" . }}
+
+{{- define "widget-content" }}
+<div class="news-coverage">
+    {{- if and (not .HideBalance) (gt .Balance.Rated 0) }}
+    <div class="nc-balance">
+        <div class="size-h6 color-subdue">Your feeds lean</div>
+        {{ template "nc-bar" .Balance }}
+        <div class="nc-bar-legend size-h6">
+            <span class="nc-legend-left">Left {{ .Balance.LeftPct }}%</span>
+            <span class="nc-legend-center">Center {{ .Balance.CenterPct }}%</span>
+            <span class="nc-legend-right">Right {{ .Balance.RightPct }}%</span>
+        </div>
+    </div>
+    {{- end }}
+
+    <div class="nc-tabs" role="tablist">
+        <input type="radio" class="nc-tab-input" name="nc-tab-{{ .GetID }}" id="nc-all-{{ .GetID }}" checked>
+        <label for="nc-all-{{ .GetID }}" class="nc-tab">Top stories</label>
+        <input type="radio" class="nc-tab-input nc-tab-input-blind" name="nc-tab-{{ .GetID }}" id="nc-blind-{{ .GetID }}">
+        <label for="nc-blind-{{ .GetID }}" class="nc-tab">Blindspots{{ if .Blindspots }} · {{ len .Blindspots }}{{ end }}</label>
+
+        <div class="nc-panel nc-panel-all">
+            {{ template "nc-stories" .TopList }}
+        </div>
+        <div class="nc-panel nc-panel-blind">
+            <p class="size-h6 color-subdue nc-blind-help">Stories where nearly all the coverage comes from one side.</p>
+            {{ template "nc-stories" .BlindspotList }}
+        </div>
+    </div>
+</div>
+{{- end }}
+
+{{- define "nc-bar" }}
+<div class="nc-bar" aria-label="Left {{ .LeftPct }}%, center {{ .CenterPct }}%, right {{ .RightPct }}%">
+    {{- if .Left }}<span class="nc-bar-left" style="flex-grow: {{ .Left }}"></span>{{ end }}
+    {{- if .Center }}<span class="nc-bar-center" style="flex-grow: {{ .Center }}"></span>{{ end }}
+    {{- if .Right }}<span class="nc-bar-right" style="flex-grow: {{ .Right }}"></span>{{ end }}
+    {{- if eq .Rated 0 }}<span class="nc-bar-unrated" style="flex-grow: 1"></span>{{ end }}
+</div>
+{{- end }}
+
+{{- define "nc-stories" }}
+{{- if not .Stories }}
+<p class="color-subdue">{{ .Empty }}</p>
+{{- else }}
+<ul class="list list-gap-14 collapsible-container" data-collapse-after="{{ .CollapseAfter }}">
+    {{- range .Stories }}
+    <li class="nc-story">
+        <a class="title size-title-dynamic color-primary-if-not-visited" href="{{ .Link }}" target="_blank" rel="noreferrer">{{ .Title }}</a>
+        {{ template "nc-bar" .Coverage }}
+        <details class="nc-sources">
+            <summary class="size-h6 color-subdue">
+                <span>{{ .Outlets }} source{{ if ne .Outlets 1 }}s{{ end }}</span>
+                {{- if .Coverage.Rated }} · <span class="nc-legend-left">L {{ .Coverage.LeftPct }}%</span> <span class="nc-legend-center">C {{ .Coverage.CenterPct }}%</span> <span class="nc-legend-right">R {{ .Coverage.RightPct }}%</span>{{ end }}
+                · <span {{ dynamicRelativeTimeAttrs .Latest }}></span>
+                {{- if eq .Blindspot "left" }} <span class="nc-badge nc-badge-left">Mostly left</span>{{ else if eq .Blindspot "right" }} <span class="nc-badge nc-badge-right">Mostly right</span>{{ end }}
+            </summary>
+            <ul class="nc-articles">
+                {{- range .Articles }}
+                <li>
+                    <div class="size-h6 flex items-center gap-7">
+                        <span class="nc-dot nc-dot-{{ .Bias.Class }}" aria-hidden="true"></span>
+                        <span class="color-highlight">{{ .Outlet }}</span>
+                        <span class="color-subdue">{{ .Bias.Label }}{{ if .Factuality }} · {{ .Factuality }} factuality{{ end }}</span>
+                    </div>
+                    <a class="nc-article-title" href="{{ .Link }}" target="_blank" rel="noreferrer">{{ .Title }}</a>
+                </li>
+                {{- end }}
+            </ul>
+        </details>
+    </li>
+    {{- end }}
+</ul>
+{{- end }}
+{{- end }}
