@@ -176,6 +176,8 @@ type settingsPerson struct {
 	Theme       string   `json:"theme"`
 	Groups      []string `json:"groups"`
 	HasPassword bool     `json:"hasPassword"`
+	// LinkedAccounts are other sign-in names that sign in as this person.
+	LinkedAccounts []string `json:"linkedAccounts"`
 }
 
 type settingsPersonInput struct {
@@ -186,6 +188,12 @@ type settingsPersonInput struct {
 	Theme    string   `json:"theme"`
 	Groups   []string `json:"groups"`
 	Password string   `json:"password"`
+	// LinkedAccounts replaces the person's linked accounts; left out, they
+	// stay as they are.
+	LinkedAccounts *[]string `json:"linkedAccounts"`
+	// ReplaceProfiles allows linking names that have a profile of their own,
+	// which removes that profile.
+	ReplaceProfiles bool `json:"replaceProfiles"`
 }
 
 type settingsOption struct {
@@ -200,13 +208,14 @@ func (a *application) handleSettingsPeopleList(w http.ResponseWriter, r *http.Re
 		people = append(people, settingsPerson{
 			Username: username, Name: m.Name, Avatar: m.Avatar, Role: m.Role,
 			Home: m.Home, Theme: m.Theme, Groups: m.Groups, HasPassword: hasPassword,
+			LinkedAccounts: nonNil(m.LinkedAccounts),
 		})
 	}
 	// People who can sign in with a password but have no profile yet, so they
 	// can be found here and given one.
 	for username := range a.Config.Auth.Users {
-		if _, m := a.findHouseholdMember(username); m == nil {
-			people = append(people, settingsPerson{Username: username, HasPassword: true})
+		if _, _, m := a.findMemberForSignIn(username, ""); m == nil {
+			people = append(people, settingsPerson{Username: username, HasPassword: true, LinkedAccounts: []string{}})
 		}
 	}
 	slices.SortFunc(people, func(x, y settingsPerson) int { return strings.Compare(x.Username, y.Username) })
@@ -232,6 +241,7 @@ func (a *application) handleSettingsPeopleList(w http.ResponseWriter, r *http.Re
 		"themes":         themes,
 		"you":            you,
 		"passwordSignIn": a.PasswordEnabled || len(a.Config.Auth.Users) > 0,
+		"unlinked":       recentUnlinkedSignIns.list(a),
 		"recovery":       inRecovery(r),
 	})
 }
@@ -278,6 +288,15 @@ func (a *application) handleSettingsPersonSave(w http.ResponseWriter, r *http.Re
 		return
 	}
 
+	var links, replaced []string
+	if in.LinkedAccounts != nil {
+		var refused bool
+		links, replaced, refused = a.checkLinkedAccounts(w, r, username, *in.LinkedAccounts, in.ReplaceProfiles)
+		if refused {
+			return
+		}
+	}
+
 	var hash []byte
 	if in.Password != "" {
 		var err error
@@ -303,6 +322,22 @@ func (a *application) handleSettingsPersonSave(w http.ResponseWriter, r *http.Re
 		setOrRemove(member, "home", in.Home)
 		setOrRemove(member, "theme", in.Theme)
 		setListOrRemove(member, "groups", in.Groups)
+		if in.LinkedAccounts != nil {
+			// Profiles being merged in bring their own linked accounts along.
+			for _, name := range replaced {
+				if old := getMappingValue(members, name); old != nil {
+					if seq := getMappingValue(old, "linked-accounts"); seq != nil {
+						for _, item := range seq.Content {
+							if !slices.ContainsFunc(links, func(l string) bool { return strings.EqualFold(l, item.Value) }) {
+								links = append(links, item.Value)
+							}
+						}
+					}
+				}
+				removeMappingKey(members, name)
+			}
+			setListOrRemove(member, "linked-accounts", links)
+		}
 
 		if hash != nil {
 			if err := ensureAuthSecretKey(a.configPath, root); err != nil {
@@ -326,8 +361,66 @@ func (a *application) handleSettingsPersonSave(w http.ResponseWriter, r *http.Re
 		writeSettingsWriteError(w, err)
 		return
 	}
-	slog.Info("Household member saved from Settings", "username", username, "password_changed", hash != nil)
+	for _, l := range links {
+		recentUnlinkedSignIns.forget(l)
+	}
+	slog.Info("Household member saved from Settings", "username", username, "password_changed", hash != nil, "profiles_merged", len(replaced))
 	writeJSON(w, http.StatusOK, map[string]any{"saved": username})
+}
+
+// checkLinkedAccounts cleans the linked accounts for username and refuses
+// ones that belong to someone else. Names with a profile of their own are
+// returned in replaced when replace is set, and otherwise answered with a
+// 409 that lists them, so Settings can ask before merging. It writes the
+// response itself when it refuses.
+func (a *application) checkLinkedAccounts(w http.ResponseWriter, r *http.Request, username string, input []string, replace bool) (links, replaced []string, refused bool) {
+	links = []string{}
+	for _, raw := range input {
+		link, err := cleanLinkedAccount(raw)
+		if err != nil {
+			writeJSONError(w, http.StatusBadRequest, err.Error())
+			return nil, nil, true
+		}
+		if link == "" || slices.ContainsFunc(links, func(l string) bool { return strings.EqualFold(l, link) }) {
+			continue
+		}
+		if strings.EqualFold(link, username) {
+			writeJSONError(w, http.StatusBadRequest, link+" is this person's own username, so it doesn't need linking.")
+			return nil, nil, true
+		}
+		owner, isProfile := a.linkOwner(link, username)
+		switch {
+		case owner == "":
+		case !isProfile:
+			writeSettingsWriteError(w, &settingsRefusal{link + " is already linked to " + owner + ". Unlink it there first."})
+			return nil, nil, true
+		default:
+			if !slices.Contains(replaced, owner) {
+				replaced = append(replaced, owner)
+			}
+		}
+		links = append(links, link)
+	}
+
+	you := a.settingsUser(w, r)
+	if you != nil && slices.Contains(replaced, you.Username) {
+		writeSettingsWriteError(w, &settingsRefusal{"That would remove your own profile. Link the other way round: edit yourself and link " + username + " to you."})
+		return nil, nil, true
+	}
+	// Don't let an admin unlink the sign-in they're using right now.
+	if you != nil && you.Username == username && you.LinkedBy != "" &&
+		!slices.ContainsFunc(links, func(l string) bool { return strings.EqualFold(l, you.LinkedBy) }) {
+		writeSettingsWriteError(w, &settingsRefusal{"You're signed in through " + you.LinkedBy + ", so unlinking it would sign you out of your profile."})
+		return nil, nil, true
+	}
+	if len(replaced) > 0 && !replace {
+		writeJSON(w, http.StatusConflict, map[string]any{
+			"error":           strings.Join(replaced, ", ") + " already has a profile. Linking replaces it.",
+			"replaceProfiles": replaced,
+		})
+		return nil, nil, true
+	}
+	return links, replaced, false
 }
 
 func (a *application) pageSlugExists(slug string) bool {

@@ -58,6 +58,12 @@
             </table>
             <p><button type="button" class="settings-button settings-gap-top" id="person-add">Add a person</button></p>
 
+            <div class="settings-card" id="unlinked-card" hidden>
+                <h2 class="settings-card-title color-highlight">Signed in without a profile</h2>
+                <p class="settings-note">These sign-ins came through Tinyauth or single sign-on recently but don't match anyone here. Link one to a person and it signs in as them from then on.</p>
+                <table class="settings-table" id="unlinked-table"><tbody></tbody></table>
+            </div>
+
             <form class="settings-card" id="person-form" hidden autocomplete="off">
                 <h2 class="settings-card-title color-highlight" id="person-form-title">Add a person</h2>
                 <div class="settings-fields">
@@ -68,6 +74,9 @@
                     <label>Home page<select class="settings-input" name="home"></select></label>
                     <label>Theme<select class="settings-input" name="theme"></select></label>
                     <label class="settings-wide">Extra groups<input class="settings-input" name="groups" placeholder="Comma separated, e.g. gamers, early-birds"></label>
+                    <label class="settings-wide">Linked accounts<input class="settings-input" name="linked" list="linked-suggestions" autocapitalize="none" spellcheck="false" placeholder="Comma separated, e.g. their Tinyauth username, email or another DashDen account"></label>
+                    <p class="settings-wide settings-note color-subdue">Signing in as any of these signs in as this person. Use it for someone's Tinyauth username when it differs from their username here, or to fold a second account into this one, such as linking a local account to an admin. Linking a name that has its own profile replaces that profile.</p>
+                    <datalist id="linked-suggestions"></datalist>
                     <p class="settings-wide settings-note" id="person-rename-note" hidden>Changing the username keeps their profile, password, theme, notes, to-dos and page access. They sign in with the new name from now on. If they sign in through Tinyauth or another sign-in service, change it there too.</p>
                     <label class="settings-wide" id="person-password-field">Password for DashDen's own sign-in page<input class="settings-input" name="password" type="password" minlength="8" maxlength="72" autocomplete="new-password" placeholder="At least 8 characters. Leave empty to keep it as it is"></label>
                 </div>

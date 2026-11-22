@@ -25,7 +25,7 @@ func (a *application) registerSettingsRenameRoutes(mux *http.ServeMux) {
 // app and notice board groups, which also take usernames.
 func listsUsernames(key string) bool {
 	switch key {
-	case "action-groups", "approve-groups", "post-groups":
+	case "action-groups", "approve-groups", "post-groups", "linked-accounts":
 		return true
 	}
 	return strings.HasSuffix(key, "-users")

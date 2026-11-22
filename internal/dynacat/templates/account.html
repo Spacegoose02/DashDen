@@ -1,0 +1,69 @@
+{{- template "document.html" . }}
+
+{{- define "document-title" }}Your account{{ end }}
+
+{{- define "document-head-after" }}
+<link rel="stylesheet" href='{{ .App.StaticAssetPath "css/settings.css" }}'>
+{{- end }}
+
+{{- define "document-body" }}
+<div class="settings-shell content-bounds">
+    <header class="settings-header">
+        <a class="settings-back color-subdue" href="{{ .App.Config.Server.BaseURL }}/">&larr; Back to the dashboard</a>
+        <h1 class="settings-title color-highlight">Your account</h1>
+        <p class="color-subdue">Signed in as {{ .AuthUser.DisplayName }}{{ if .ViaLink }}, through the linked account <span class="settings-mono">{{ .SignInName }}</span>{{ end }}.</p>
+    </header>
+
+    {{- if .Notice }}<p class="settings-note color-positive" role="status">{{ .Notice }}</p>{{ end }}
+    {{- if .Error }}<p class="settings-note color-negative" role="alert">{{ .Error }}</p>{{ end }}
+
+    <main class="settings-panel widget-content-frame">
+        {{- if .AuthUser.Member }}
+        <h2 class="settings-card-title color-highlight">Linked accounts</h2>
+        <p class="settings-note">Signing in as any of these, for example through Tinyauth, signs you in as <span class="settings-mono">{{ .AuthUser.Username }}</span> with your profile, pages and theme.</p>
+        {{- if .Links }}
+        <table class="settings-table">
+            <tbody>
+            {{- range .Links }}
+                <tr>
+                    <td class="settings-mono">{{ . }}{{ if eq . $.AuthUser.LinkedBy }} <span class="color-subdue">(you're using this one now)</span>{{ end }}</td>
+                    <td class="settings-actions">
+                        {{- if and $.CanEditConfig (ne . $.AuthUser.LinkedBy) }}
+                        <form method="post" action="{{ $.App.Config.Server.BaseURL }}/account/unlink" style="display:contents">
+                            <input type="hidden" name="account" value="{{ . }}">
+                            <button type="submit" class="settings-button settings-button-small settings-button-danger">Unlink</button>
+                        </form>
+                        {{- end }}
+                    </td>
+                </tr>
+            {{- end }}
+            </tbody>
+        </table>
+        {{- else }}
+        <p class="settings-note color-subdue">None yet.</p>
+        {{- end }}
+        <p class="settings-note color-subdue settings-gap-top">To link your Tinyauth account, open DashDen through Tinyauth and come back to this page. If it doesn't offer to link, ask an admin to add your Tinyauth username to your profile under Settings, People.</p>
+
+        {{- else if .Unlinked }}
+        <h2 class="settings-card-title color-highlight">Link this sign-in to your DashDen account</h2>
+        <p class="settings-note">You're signed in as <span class="settings-mono">{{ .SignInName }}</span>, which doesn't have a DashDen profile yet. If you already have a DashDen account, link them, and signing in as <span class="settings-mono">{{ .SignInName }}</span> will sign you in as that account from now on.</p>
+        {{- if .CanLink }}
+        <form method="post" action="{{ .App.Config.Server.BaseURL }}/account/link" autocomplete="off">
+            <div class="settings-fields">
+                <label>DashDen username<input class="settings-input" name="username" required autocomplete="username" autocapitalize="none" spellcheck="false"></label>
+                <label>Password<input class="settings-input" name="password" type="password" required autocomplete="current-password"></label>
+            </div>
+            <div class="settings-actions settings-gap-top">
+                <button type="submit" class="settings-button">Link accounts</button>
+            </div>
+        </form>
+        {{- else }}
+        <p class="settings-note color-subdue">Ask an admin to link <span class="settings-mono">{{ .SignInName }}</span> to your profile under Settings, People.</p>
+        {{- end }}
+
+        {{- else }}
+        <p class="settings-note color-subdue">You don't have a household profile yet, so there's nothing to link. Ask an admin to add you under Settings, People.</p>
+        {{- end }}
+    </main>
+</div>
+{{- end }}
