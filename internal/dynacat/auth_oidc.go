@@ -234,7 +234,8 @@ func (a *application) handleOIDCCallback(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	known, create, refused := a.oidcProfileDecision(username)
+	email, _ := claims["email"].(string)
+	known, create, refused := a.oidcProfileDecision(username, email)
 	if refused {
 		slog.Warn("OIDC sign-in by someone without a household profile", "username", username)
 		http.Redirect(w, r, baseURL+"/login?error=no_account", http.StatusSeeOther)
@@ -277,11 +278,12 @@ func (a *application) handleOIDCCallback(w http.ResponseWriter, r *http.Request)
 }
 
 // oidcProfileDecision applies create-accounts: it returns the username to use
-// (the household's spelling when there is a profile), whether a profile
+// (the household's spelling when there is a profile, or the person a linked
+// account belongs to), whether a profile
 // should be made, and whether the person is refused for not having one.
-func (a *application) oidcProfileDecision(username string) (string, bool, bool) {
+func (a *application) oidcProfileDecision(username, email string) (string, bool, bool) {
 	create := a.Config.Auth.OIDC.CreateAccounts
-	known, m := a.findHouseholdMember(username)
+	known, _, m := a.findMemberForSignIn(username, email)
 	if m != nil {
 		return known, false, false
 	}

@@ -16,6 +16,10 @@ type householdMember struct {
 	Home   string   `yaml:"home"`
 	Theme  string   `yaml:"theme"`
 	Groups []string `yaml:"groups"`
+	// LinkedAccounts are other sign-in names (or email addresses) that belong
+	// to this person, such as their Tinyauth username or a second local
+	// account. Signing in as any of them signs in as this person.
+	LinkedAccounts []string `yaml:"linked-accounts"`
 }
 
 const (
@@ -35,6 +39,30 @@ func (m *householdMember) AvatarIsImage() bool {
 }
 
 func validateHousehold(cfg *config) error {
+	linkedTo := map[string]string{}
+	for username, m := range cfg.Household.Members {
+		if m == nil {
+			continue
+		}
+		for _, link := range m.LinkedAccounts {
+			key := strings.ToLower(strings.TrimSpace(link))
+			if key == "" {
+				return fmt.Errorf("household member %q has an empty linked account", username)
+			}
+			if other, ok := linkedTo[key]; ok && other != username {
+				return fmt.Errorf("linked account %q belongs to both %q and %q", link, other, username)
+			}
+			linkedTo[key] = username
+		}
+	}
+	for username := range cfg.Household.Members {
+		if other, ok := linkedTo[strings.ToLower(username)]; ok {
+			if other == username {
+				return fmt.Errorf("household member %q is linked to their own username", username)
+			}
+			return fmt.Errorf("%q has a household profile of their own and is also linked to %q; remove one of the two", username, other)
+		}
+	}
 	for username, m := range cfg.Household.Members {
 		if m == nil {
 			return fmt.Errorf("household member %q has no settings", username)
@@ -96,14 +124,19 @@ func (a *application) withHousehold(u *authenticatedUser) *authenticatedUser {
 		return nil
 	}
 
-	username, m := a.findHouseholdMember(u.Username)
+	username, link, m := a.findMemberForSignIn(u.Username, u.Email)
 	if m == nil {
+		if u.IsProxy || u.IsOIDC {
+			recentUnlinkedSignIns.record(u)
+		}
 		return u
 	}
 
 	enriched := *u
 	// Sign-in names ignore capital letters; use the spelling the household has.
 	enriched.Username = username
+	enriched.SignInName = u.Username
+	enriched.LinkedBy = link
 	enriched.member = m
 	if m.Name != "" {
 		enriched.Name = m.Name
@@ -160,4 +193,39 @@ func (a *application) findHouseholdMember(name string) (string, *householdMember
 		}
 	}
 	return "", nil
+}
+
+// findMemberForSignIn finds the profile for a sign-in: the member with that
+// username, otherwise the member who has the username, then the email
+// address, among their linked accounts. link is the linked account that
+// matched, empty for a direct match.
+func (a *application) findMemberForSignIn(username, email string) (key, link string, m *householdMember) {
+	if key, m := a.findHouseholdMember(username); m != nil {
+		return key, "", m
+	}
+	for _, name := range []string{username, email} {
+		if name = strings.TrimSpace(name); name == "" {
+			continue
+		}
+		if key, link, m := a.findLinkedMember(name); m != nil {
+			return key, link, m
+		}
+	}
+	return "", "", nil
+}
+
+// findLinkedMember returns the member who lists name among their linked
+// accounts, ignoring capital letters.
+func (a *application) findLinkedMember(name string) (key, link string, m *householdMember) {
+	for configured, member := range a.Config.Household.Members {
+		if member == nil {
+			continue
+		}
+		for _, l := range member.LinkedAccounts {
+			if strings.EqualFold(strings.TrimSpace(l), name) {
+				return configured, l, member
+			}
+		}
+	}
+	return "", "", nil
 }

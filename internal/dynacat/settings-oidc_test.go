@@ -76,18 +76,18 @@ func TestOIDCProfileDecision(t *testing.T) {
 	yes, no := true, false
 
 	a.Config.Auth.OIDC = &oidcConfig{}
-	if name, create, refused := a.oidcProfileDecision("stranger"); name != "stranger" || create || refused {
+	if name, create, refused := a.oidcProfileDecision("stranger", ""); name != "stranger" || create || refused {
 		t.Fatal("without create-accounts anyone gets in, as upstream")
 	}
 	a.Config.Auth.OIDC.CreateAccounts = &no
-	if _, _, refused := a.oidcProfileDecision("stranger"); !refused {
+	if _, _, refused := a.oidcProfileDecision("stranger", ""); !refused {
 		t.Fatal("create-accounts: false should turn away people without a profile")
 	}
-	if name, _, refused := a.oidcProfileDecision("MOM"); refused || name != "mom" {
+	if name, _, refused := a.oidcProfileDecision("MOM", ""); refused || name != "mom" {
 		t.Fatal("people with a profile get in, under its spelling")
 	}
 	a.Config.Auth.OIDC.CreateAccounts = &yes
-	if _, create, refused := a.oidcProfileDecision("stranger"); !create || refused {
+	if _, create, refused := a.oidcProfileDecision("stranger", ""); !create || refused {
 		t.Fatal("create-accounts: true should make a profile")
 	}
 }

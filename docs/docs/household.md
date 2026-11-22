@@ -27,6 +27,7 @@ household:
 | `home` | Slug of the page opened when they visit the dashboard's root address |
 | `theme` | The theme they start on, a preset or a [built-in theme](themes.md#built-in-themes). Kids without one start on Playroom. Once they pick a theme in the theme picker, their choice is saved for them and follows them to every device |
 | `groups` | Extra groups, added to the ones the sign-in method sends |
+| `linked-accounts` | Other sign-in names or email addresses that sign in as this person. See [Linked accounts](#linked-accounts) |
 
 Roles and groups work with `allowed-groups` on pages and with `editing-groups`, so this works even when the sign-in method has no groups of its own, such as Tinyauth's local users:
 
@@ -41,6 +42,25 @@ server:
 ```
 
 DashDen refuses to start if a `home` isn't a page slug, a `theme` isn't a preset or built-in theme, or a `role` isn't one of the four above. People who sign in but aren't listed still work as before, with no profile.
+
+## Linked accounts
+
+When someone's Tinyauth username isn't the same as their DashDen username, or one person has two accounts, link them. Signing in as any linked name (or, for Tinyauth and OIDC, with a linked email address) signs in as that person, with their role, pages, theme and saved data:
+
+```yaml
+household:
+  members:
+    mom:
+      role: admin
+      linked-accounts: [jane, jane@example.com, mom-old]
+```
+
+Links work for every sign-in method, so the example also signs the local account `mom-old` in as `mom`. Names ignore capital letters. A name can be linked to only one person, and not to someone who has a profile of their own.
+
+There are two ways to set them up without editing the config:
+
+- **Yourself, from Your account.** Click your name in the header. If you're signed in through Tinyauth (or OIDC) as someone without a profile, the page offers to link it: type your DashDen username and password once, and from then on Tinyauth signs you in as that account. The same page lists your links and can remove them. This needs DashDen's own password sign-in; without it, ask an admin.
+- **Admins, from Settings, People.** Edit a person and fill in *Linked accounts*. People who recently signed in through Tinyauth or OIDC without a profile are listed under *Signed in without a profile*, each with a *Link to…* menu. Linking a name that has its own profile, such as folding someone's second account into an admin account, asks first and then replaces that profile. Their password, if they have one, keeps working and signs them in as the person it's linked to.
 
 ## Themes that follow the person
 

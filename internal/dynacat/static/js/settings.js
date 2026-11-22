@@ -20,7 +20,12 @@ async function call(method, path, body) {
     const response = await fetch(API + path, options);
     let data = {};
     try { data = await response.json(); } catch (e) {}
-    if (!response.ok) throw new Error(data.error || response.statusText);
+    if (!response.ok) {
+        const err = new Error(data.error || response.statusText);
+        err.status = response.status;
+        err.data = data;
+        throw err;
+    }
     return data;
 }
 
@@ -97,6 +102,11 @@ function openPersonForm(person) {
     f.role.replaceChildren(...["", ...peopleData.roles].map((r) => option(r, roleLabels[r] || r)));
     f.home.replaceChildren(option("", "The first page"), ...peopleData.pages.map((p) => option(p.value, p.label)));
     f.theme.replaceChildren(option("", "Their own choice"), ...peopleData.themes.map((t) => option(t.value, t.label)));
+    const suggestions = new Set([
+        ...(peopleData.unlinked || []).flatMap((u) => [u.username, u.email].filter(Boolean)),
+        ...peopleData.people.filter((p) => !person || p.username !== person.username).map((p) => p.username),
+    ]);
+    document.getElementById("linked-suggestions").replaceChildren(...[...suggestions].map((s) => option(s, s)));
     if (person) {
         f.username.value = person.username;
         f.name.value = person.name || "";
@@ -105,6 +115,7 @@ function openPersonForm(person) {
         f.home.value = person.home || "";
         f.theme.value = person.theme || "";
         f.groups.value = joinList(person.groups);
+        f.linked.value = joinList(person.linkedAccounts);
     } else {
         f.role.value = "adult";
     }
@@ -127,10 +138,11 @@ personForm.addEventListener("submit", async (event) => {
     const body = {
         name: f.name.value, avatar: f.avatar.value, role: f.role.value,
         home: f.home.value, theme: f.theme.value, groups: splitList(f.groups.value),
+        linkedAccounts: splitList(f.linked.value),
     };
     if (f.password.value) body.password = f.password.value;
     try {
-        await call("PUT", "/people/" + encodeURIComponent(original || username), body);
+        await savePerson(original || username, body);
         let carried = true;
         if (renaming) {
             const result = await call("POST", "/people/" + encodeURIComponent(original) + "/rename", { newUsername: username });
@@ -145,6 +157,68 @@ personForm.addEventListener("submit", async (event) => {
         notify(e.message, true);
     }
 });
+
+// savePerson asks before linking a name that has a profile of its own.
+async function savePerson(username, body) {
+    try {
+        await call("PUT", "/people/" + encodeURIComponent(username), body);
+    } catch (e) {
+        const names = e.status === 409 && e.data?.replaceProfiles;
+        if (!names) throw e;
+        if (!confirm(`${names.join(", ")} already ${names.length > 1 ? "have profiles" : "has a profile"}. Link anyway? Their profile is removed and they sign in as ${username} from now on. Their own password, if any, keeps working.`)) {
+            throw new Error("Nothing was saved.");
+        }
+        await call("PUT", "/people/" + encodeURIComponent(username), { ...body, replaceProfiles: true });
+    }
+}
+
+function personBody(p, extra) {
+    return {
+        name: p.name || "", avatar: p.avatar || "", role: p.role || "", home: p.home || "",
+        theme: p.theme || "", groups: p.groups || [], linkedAccounts: p.linkedAccounts || [], ...extra,
+    };
+}
+
+function renderUnlinked() {
+    const card = document.getElementById("unlinked-card");
+    const tbody = document.querySelector("#unlinked-table tbody");
+    const unlinked = peopleData.unlinked || [];
+    const members = peopleData.people;
+    card.hidden = !unlinked.length || !members.length;
+    tbody.replaceChildren();
+    for (const u of unlinked) {
+        const tr = document.createElement("tr");
+        const who = cell("");
+        const name = document.createElement("div");
+        name.className = "color-highlight settings-mono";
+        name.textContent = u.username;
+        const sub = document.createElement("div");
+        sub.className = "size-h6 color-subdue";
+        sub.textContent = [u.method, u.email, "last seen " + new Date(u.lastSeen).toLocaleString()].filter(Boolean).join(" · ");
+        who.append(name, sub);
+        tr.append(who);
+        const actions = document.createElement("td");
+        actions.className = "settings-actions";
+        const select = document.createElement("select");
+        select.className = "settings-input";
+        select.setAttribute("aria-label", "Person to link " + u.username + " to");
+        select.append(option("", "Link to…"), ...members.map((p) => option(p.username, (p.name || p.username) + (p.username === peopleData.you ? " (you)" : ""))));
+        actions.append(select, button("Link", async () => {
+            const p = members.find((m) => m.username === select.value);
+            if (!p) { notify("Pick who to link it to.", true); return; }
+            try {
+                await savePerson(p.username, personBody(p, { linkedAccounts: [...(p.linkedAccounts || []), u.username] }));
+                notify(`Linked ${u.username} to ${p.name || p.username}, reloading…`);
+                await waitForConfigReload();
+                loadPeople();
+            } catch (e) {
+                notify(e.message, true);
+            }
+        }));
+        tr.append(actions);
+        tbody.append(tr);
+    }
+}
 
 async function loadPeople() {
     const tbody = document.querySelector("#people-table tbody");
@@ -170,7 +244,8 @@ async function loadPeople() {
             name.textContent = (p.name || p.username) + (p.username === peopleData.you ? " (you)" : "");
             const sub = document.createElement("div");
             sub.className = "size-h6 color-subdue settings-mono";
-            sub.textContent = p.username + (p.groups?.length ? " · " + p.groups.join(", ") : "") + (p.hasPassword ? " · has a password" : "");
+            sub.textContent = p.username + (p.groups?.length ? " · " + p.groups.join(", ") : "") + (p.hasPassword ? " · has a password" : "") +
+                (p.linkedAccounts?.length ? " · linked: " + p.linkedAccounts.join(", ") : "");
             who.append(name, sub);
             tr.append(who);
             tr.append(cell(roleLabels[p.role || ""] || p.role));
@@ -194,6 +269,7 @@ async function loadPeople() {
             tr.append(actions);
             tbody.append(tr);
         }
+        renderUnlinked();
     } catch (e) {
         notify("Could not load people: " + e.message, true);
     }

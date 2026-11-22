@@ -51,7 +51,11 @@ type authenticatedUser struct {
 	Groups   []string
 	IsOIDC   bool
 	IsProxy  bool
-	member   *householdMember
+	// SignInName is the name the sign-in method reported and LinkedBy the
+	// linked account it matched, when it differs from Username.
+	SignInName string
+	LinkedBy   string
+	member     *householdMember
 }
 
 // DisplayName is the person's full name when the sign-in method sent one.
