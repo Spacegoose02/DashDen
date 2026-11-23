@@ -4,10 +4,10 @@
 
 {{ define "widget-content" }}
 {{ if not (and .ShowFailingOnly (not .HasFailing)) }}
-<ul class="dynamic-columns list-gap-20 list-with-separator">
+<ul class="dynamic-columns list-gap-20 list-with-separator monitor-sites">
     {{ range .Sites }}
     {{ if and $.ShowFailingOnly (ne .StatusStyle "error" ) }} {{ continue }} {{ end }}
-    <div class="monitor-site flex items-center gap-15">
+    <div class="monitor-site flex items-center gap-15" data-status="{{ .StatusStyle }}">
         {{ template "site" . }}
     </div>
     {{ end }}
@@ -23,9 +23,9 @@
 {{ end }}
 
 {{ define "site" }}
-{{ if .Icon.URL }}
-<img class="monitor-site-icon{{ if .Icon.AutoInvert }} flat-icon{{ end }}" src="{{ .Icon.URL }}" alt="" loading="lazy">
-{{ end }}
+<div class="monitor-site-icon-box{{ if not .Icon.URL }} monitor-site-icon-missing{{ end }}" data-initial="{{ monogram .Title }}" aria-hidden="true">
+{{- if .Icon.URL }}<img class="monitor-site-icon{{ if .Icon.AutoInvert }} flat-icon{{ end }}" src="{{ .Icon.URL }}" alt="" loading="lazy" onerror="this.parentNode.classList.add('monitor-site-icon-missing')">{{ end -}}
+</div>
 <div class="grow min-width-0">
     <a class="size-h3 color-highlight text-truncate block" href="{{ .URL | safeURL }}" {{ if not .SameTab }}target="_blank"{{ end }} rel="noreferrer">{{ .Title }}</a>
     {{- if .Description }}

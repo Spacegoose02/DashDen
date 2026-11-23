@@ -1,0 +1,90 @@
+/* DashDen: calmer monitor (Services) widget.
+   Rows share one shape: an icon tile (or a letter when there is no icon),
+   the name and status, then a small dot when up or a warning when down. */
+
+.monitor-sites.dynamic-columns {
+    gap: 0.4rem 1.2rem;
+    margin-inline: -0.9rem;
+}
+
+.monitor-sites.dynamic-columns > .monitor-site {
+    margin: 0;
+    border: 0;
+    padding: 0.7rem 0.9rem;
+    border-radius: var(--border-radius);
+    gap: 1.2rem;
+    transition: background-color 0.2s;
+}
+
+.monitor-sites > .monitor-site:hover {
+    background-color: color-mix(in srgb, var(--color-text-base) 6%, transparent);
+}
+
+.monitor-sites > .monitor-site[data-status="error"] {
+    background-color: color-mix(in srgb, var(--color-negative) 9%, transparent);
+}
+
+/* Icon tile: every row lines up, odd-sized logos sit in the same frame. */
+.monitor-site-icon-box {
+    position: relative;
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 3.6rem;
+    height: 3.6rem;
+    border-radius: 0.9rem;
+    background-color: color-mix(in srgb, var(--color-text-base) 7%, transparent);
+    overflow: hidden;
+}
+
+.monitor-site-icon-box .monitor-site-icon {
+    width: 2.6rem;
+    top: 0;
+}
+
+.monitor-site-icon-box.monitor-site-icon-missing {
+    background-color: color-mix(in srgb, var(--color-primary) 16%, transparent);
+}
+
+.monitor-site-icon-box.monitor-site-icon-missing::before {
+    content: attr(data-initial);
+    color: var(--color-primary);
+    font-size: 1.6rem;
+    font-weight: 600;
+    line-height: 1;
+}
+
+.monitor-site-icon-missing .monitor-site-icon {
+    display: none;
+}
+
+/* Status line: quieter when all is well. */
+.monitor-site > .grow > div {
+    font-size: var(--font-size-h5);
+    font-variant-numeric: tabular-nums;
+    margin-top: 0.1rem;
+}
+
+.monitor-site[data-status="ok"] > .grow > div {
+    color: var(--color-text-subdue);
+}
+
+/* Up: a small dot instead of a big check badge. Down keeps its warning. */
+.monitor-site[data-status="ok"] .monitor-site-status-icon {
+    width: 0.9rem;
+    height: 0.9rem;
+    margin-right: 0.5rem;
+    border-radius: 50%;
+    background-color: var(--color-positive);
+    box-shadow: 0 0 0 0.35rem color-mix(in srgb, var(--color-positive) 18%, transparent);
+}
+
+.monitor-site[data-status="ok"] .monitor-site-status-icon svg {
+    display: none;
+}
+
+.monitor-site[data-status="error"] .monitor-site-status-icon,
+.monitor-site[data-status="disabled"] .monitor-site-status-icon {
+    width: 1.8rem;
+    height: 1.8rem;
+}
