@@ -202,6 +202,7 @@ var fieldAnnotations = map[string]map[string]fieldAnnotation{
 		"comments-url-template": {Advanced: true},
 		"request-url-template":  {Advanced: true},
 		"app-auth":              {Advanced: true},
+		"redlib-url":            {Hint: "Your Redlib address, e.g. http://192.168.1.10:8080. Needed since Reddit ended RSS and signed-out access."},
 	},
 	"news-coverage": {
 		"feeds.url":             {Hint: "In FreshRSS, open a saved query, choose Share and copy its RSS link."},

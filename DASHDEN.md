@@ -40,6 +40,7 @@ New behaviour goes in **new files**. An upstream file only gets a short hook tha
 | Undo in the editor right after a change | `editor-undo.go` | |
 | Built-in themes and theme styles (glass, neon, kids and more) | `theme-styles.go`, `static/css/theme-styles.css` | `themes.md` |
 | Bento pages, `tile` sizes (or a `bento-s`/`-w`/`-t`/`-l` css-class), `width: full` and the Wide view button | `page-bento.go`, `static/js/bento.js`, `static/css/bento.css` | `configuration.md` |
+| Reddit widget reads through a self-hosted Redlib (`redlib-url`) since Reddit ended RSS | `widget-reddit-redlib.go` | `configuration.md` |
 | Docker image, Unraid template and compose, upstream watch | `.github/workflows/upstream-watch.yml`, `docker-compose.dashden.yml`, `unraid/` | `README.md` |
 
 Every Go file above has a `_test.go` next to it.
@@ -66,6 +67,7 @@ These are where upstream merges can conflict. Paths are under `internal/dynacat/
 | `widget-container.go` | `checkNestedWidgetAccess` for groups and split columns | Small |
 | `widget-search.go` | Widgets limited to some people stay out of search | Small |
 | `widget-todo.go` | `per-person` option | Small |
+| `widget-reddit.go` | `redlib-url` field, `initializeRedlib` call, `update` gets posts from `fetchRedditPosts` (which now holds the old RSS fallback), 403 hint names `redlib-url` | If upstream changes the fallback in `update`, move it into `fetchRedditPosts` |
 | `widget-schema.go` | Editor hints for the new widgets (including `news-coverage`) and common `allowed-*` fields | Merge entries; watch for duplicate keys |
 | `templates/page.html` | Kiosk script, den-app script, nav-overflow, pwa and bento scripts, Wide view button, settings link, avatar and display name in the nav, DashDen logo, config problems banner | Small, but spread through the header |
 | `templates/footer.html`, `templates/widget-base.html`, `templates/first-run-setup.html` | DashDen name and links | Keep ours |
