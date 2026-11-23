@@ -474,6 +474,10 @@ func newApplication(c *config) (*application, error) {
 
 	pageUsage.setPath(dbPath) // DashDen: page-usage.go
 
+	if app.oidcSessions != nil {
+		app.oidcSessions.persistTo(dbPath) // DashDen: keep sign-ins across restarts
+	}
+
 	if app.AnyAuthEnabled() && !config.Theme.DisablePicker {
 		app.userPrefs = newUserPrefsStorage(dbPath)
 		if err := app.userPrefs.init(); err != nil {
@@ -1234,7 +1238,7 @@ func (a *application) server() (func() error, func() error) {
 	go a.sseUpdateLoop(ctx)
 	go a.prewarmWidgets()
 	if a.oidcSessions != nil {
-		go a.oidcSessions.runSweeper(ctx, 15*time.Minute, OIDC_SESSION_VALID_PERIOD)
+		go a.oidcSessions.runSweeper(ctx, 15*time.Minute)
 	}
 
 	stop := func() error {

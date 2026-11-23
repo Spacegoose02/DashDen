@@ -17,6 +17,12 @@ import (
 
 const OIDC_STATE_COOKIE_NAME = "oidc_state"
 const OIDC_PKCE_COOKIE_NAME = "oidc_pkce"
+
+// Carries the "Stay signed in" box from the sign-in page through the trip to
+// the provider. The page also keeps it (as REMEMBER_PREFERENCE_COOKIE_NAME,
+// set by login.js) so auto-redirect-oidc sign-ins use the last choice.
+const OIDC_REMEMBER_COOKIE_NAME = "oidc_remember"
+const REMEMBER_PREFERENCE_COOKIE_NAME = "dashden_remember"
 const OIDC_STATE_VALID_PERIOD = 5 * time.Minute
 
 func initOIDCProvider(cfg *oidcConfig) (*gooidc.Provider, *gooidc.IDTokenVerifier, *oauth2.Config, error) {
@@ -136,6 +142,23 @@ func (a *application) handleOIDCLogin(w http.ResponseWriter, r *http.Request) {
 		SameSite: http.SameSiteLaxMode,
 	})
 
+	remember := r.URL.Query().Get("remember")
+	if remember == "" {
+		if c, err := r.Cookie(REMEMBER_PREFERENCE_COOKIE_NAME); err == nil {
+			remember = c.Value
+		}
+	}
+	if remember == "1" {
+		a.setCookie(w, r, &http.Cookie{
+			Name:     OIDC_REMEMBER_COOKIE_NAME,
+			Value:    "1",
+			Expires:  time.Now().Add(OIDC_STATE_VALID_PERIOD),
+			SameSite: http.SameSiteLaxMode,
+		})
+	} else {
+		a.clearCookie(w, r, OIDC_REMEMBER_COOKIE_NAME)
+	}
+
 	url := client.AuthCodeURL(state, oauth2.S256ChallengeOption(pkceVerifier))
 	http.Redirect(w, r, url, http.StatusFound)
 }
@@ -162,6 +185,12 @@ func (a *application) handleOIDCCallback(w http.ResponseWriter, r *http.Request)
 
 	a.clearCookie(w, r, OIDC_STATE_COOKIE_NAME)
 	a.clearCookie(w, r, OIDC_PKCE_COOKIE_NAME)
+
+	remember := false
+	if c, err := r.Cookie(OIDC_REMEMBER_COOKIE_NAME); err == nil && c.Value == "1" {
+		remember = true
+		a.clearCookie(w, r, OIDC_REMEMBER_COOKIE_NAME)
+	}
 
 	code := r.URL.Query().Get("code")
 	if code == "" {
@@ -258,23 +287,32 @@ func (a *application) handleOIDCCallback(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	a.oidcSessions.set(sessionID, &oidcSession{
+	now := time.Now()
+	session := &oidcSession{
 		Username:  username,
 		Groups:    groups,
-		Token:     oauth2Token,
-		CreatedAt: time.Now(),
-	})
-
-	// Strict would not survive the redirect back from the provider.
-	a.setCookie(w, r, &http.Cookie{
-		Name:     OIDC_SESSION_COOKIE_NAME,
-		Value:    sessionID,
-		Expires:  time.Now().Add(OIDC_SESSION_VALID_PERIOD),
-		SameSite: http.SameSiteLaxMode,
-	})
+		IDToken:   rawIDToken,
+		CreatedAt: now,
+		LastSeen:  now,
+		Remember:  remember,
+	}
+	a.oidcSessions.set(sessionID, session)
+	a.setOIDCSessionCookie(w, r, sessionID, session.cookieExpiry(now))
 
 	slog.Info("OIDC user logged in", "username", username)
 	http.Redirect(w, r, a.takeLoginRedirect(w, r), http.StatusSeeOther)
+}
+
+// setOIDCSessionCookie: a zero expiry makes a cookie that ends with the
+// browser. Lax, because Strict would not survive the redirect back from the
+// provider.
+func (a *application) setOIDCSessionCookie(w http.ResponseWriter, r *http.Request, sessionID string, expires time.Time) {
+	a.setCookie(w, r, &http.Cookie{
+		Name:     OIDC_SESSION_COOKIE_NAME,
+		Value:    sessionID,
+		Expires:  expires,
+		SameSite: http.SameSiteLaxMode,
+	})
 }
 
 // oidcProfileDecision applies create-accounts: it returns the username to use

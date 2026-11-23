@@ -95,6 +95,10 @@
                     <span>{{ .App.OIDCButtonName }}</span>
                 </a>
             </div>
+            <label class="login-remember animate-entrance animate-delay-2" for="remember">
+                <input type="checkbox" id="remember" name="remember">
+                <span>Stay signed in on this device</span>
+            </label>
             {{- end }}
 
             {{/* Password fallback elements needed by login.js - hidden when OIDC-only */}}

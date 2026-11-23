@@ -19,10 +19,25 @@ const loginButton = find("#login-button");
 const toggleVisibilityButton = find("#toggle-password-visibility");
 const rememberInput = document.getElementById("remember");
 
+// The single sign-on button carries the box's state to the server, and a
+// cookie keeps the choice for auto-redirect-oidc, which skips this page.
+function syncRememberChoice() {
+    const value = rememberInput.checked ? "1" : "0";
+    document.querySelectorAll("a.oidc-login-button").forEach(link => {
+        const url = new URL(link.href, location.href);
+        url.searchParams.set("remember", value);
+        link.href = url.pathname + url.search;
+    });
+    document.cookie = `dashden_remember=${value}; path=${pageData.baseURL || ""}/; max-age=31536000; samesite=lax`
+        + (location.protocol === "https:" ? "; secure" : "");
+}
+
 if (rememberInput) {
     try { rememberInput.checked = localStorage.getItem("dashden-remember") === "1"; } catch (_) {}
+    syncRememberChoice();
     rememberInput.addEventListener("change", () => {
         try { localStorage.setItem("dashden-remember", rememberInput.checked ? "1" : "0"); } catch (_) {}
+        syncRememberChoice();
     });
 }
 

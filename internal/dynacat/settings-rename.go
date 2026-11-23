@@ -339,14 +339,3 @@ func renameTodoLists(tx *sql.Tx, oldName, newName string) error {
 	return nil
 }
 
-// renameUser moves signed-in provider sessions to the new name.
-func (s *sessionStore) renameUser(oldName, newName string) {
-	s.sessions.Range(func(k, v any) bool {
-		if sess, ok := v.(*oidcSession); ok && strings.EqualFold(sess.Username, oldName) {
-			moved := *sess
-			moved.Username = newName
-			s.sessions.Store(k, &moved)
-		}
-		return true
-	})
-}

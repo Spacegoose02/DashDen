@@ -393,8 +393,12 @@ func (a *application) getSignedInUser(w http.ResponseWriter, r *http.Request) *a
 		if err == nil && sessionCookie.Value != "" {
 			sess, ok := a.oidcSessions.get(sessionCookie.Value)
 			if ok {
-				if time.Since(sess.CreatedAt) < OIDC_SESSION_VALID_PERIOD &&
+				now := time.Now()
+				if !sess.expired(now) &&
 					oidcUserAllowed(a.Config.Auth.OIDC, sess.Username, sess.Groups) {
+					if a.oidcSessions.touch(sessionCookie.Value, now) {
+						a.setOIDCSessionCookie(w, r, sessionCookie.Value, sess.cookieExpiry(now))
+					}
 					return &authenticatedUser{
 						Username: sess.Username,
 						Groups:   sess.Groups,
@@ -583,7 +587,7 @@ func (a *application) handleLogoutRequest(w http.ResponseWriter, r *http.Request
 
 // Ends the session at the provider too, otherwise auto-redirect-oidc would sign the user straight back in.
 func (a *application) oidcProviderLogoutURL(r *http.Request, session *oidcSession, loggedOutPath string) string {
-	if session == nil || session.Token == nil {
+	if session == nil || session.IDToken == "" {
 		return ""
 	}
 
@@ -612,9 +616,7 @@ func (a *application) oidcProviderLogoutURL(r *http.Request, session *oidcSessio
 	query.Set("client_id", a.Config.Auth.OIDC.ClientID)
 	query.Set("post_logout_redirect_uri", redirectURL.Scheme+"://"+redirectURL.Host+loggedOutPath)
 
-	if idToken, ok := session.Token.Extra("id_token").(string); ok && idToken != "" {
-		query.Set("id_token_hint", idToken)
-	}
+	query.Set("id_token_hint", session.IDToken)
 
 	endSessionURL.RawQuery = query.Encode()
 	return endSessionURL.String()

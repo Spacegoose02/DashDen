@@ -125,6 +125,8 @@ The `redirect-url` must match the callback URL configured in your identity provi
 
 These are saved as `button-name`, `create-accounts`, `new-account-role` and `hide-button` under `auth.oidc`. If the provider can't be reached when DashDen starts, DashDen still starts and the button tries again, saying so if it's still down.
 
+**Stay signed in** works for the sign-in button too: tick it before pressing the button and that device stays signed in for 90 days after its last visit. Without it, the session ends when the browser closes, and after 14 days at most. With `auto-redirect-oidc`, the choice last made on that device is used. Single sign-on sessions are kept in `dynacat.db`, so restarting or updating DashDen doesn't sign anyone out.
+
 ### Disabling password auth (OIDC-only mode)
 
 When OIDC is working and you want to remove the password login option entirely:
