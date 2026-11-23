@@ -42,6 +42,7 @@ type redditWidget struct {
 	Limit               int               `yaml:"limit"`
 	CollapseAfter       int               `yaml:"collapse-after"`
 	RequestURLTemplate  string            `yaml:"request-url-template"`
+	RedlibURL           string            `yaml:"redlib-url"` // DashDen: widget-reddit-redlib.go
 
 	AppAuth struct {
 		Name   string `yaml:"name"`
@@ -83,6 +84,10 @@ func (widget *redditWidget) initialize() error {
 		}
 	}
 
+	if err := widget.initializeRedlib(); err != nil {
+		return err
+	}
+
 	a := &widget.AppAuth
 	if a.Name != "" || a.ID != "" || a.Secret != "" {
 		if a.Name == "" || a.ID == "" || a.Secret == "" {
@@ -109,18 +114,7 @@ func (widget *redditWidget) initialize() error {
 }
 
 func (widget *redditWidget) update(ctx context.Context) {
-	posts, err := widget.fetchSubredditPosts()
-	fromRSS := false
-
-	// Reddit's RSS feeds still serve signed-out clients when the JSON API blocks them.
-	if err != nil && !widget.AppAuth.enabled {
-		rssPosts, rssErr := widget.fetchSubredditPostsFromRSS()
-		if rssErr != nil {
-			err = fmt.Errorf("%w, rss fallback also failed: %v", err, rssErr)
-		} else {
-			posts, err, fromRSS = rssPosts, nil, true
-		}
-	}
+	posts, fromRSS, err := widget.fetchRedditPosts()
 
 	if !widget.canContinueUpdateAfterHandlingErr(err) {
 		return
@@ -279,7 +273,7 @@ func (widget *redditWidget) fetchSubredditPosts() (forumPostList, error) {
 	if err != nil {
 		// The 403 body is Reddit's full HTML block page, so only the URL is reported.
 		if !app.enabled && strings.Contains(err.Error(), "status code 403") {
-			return nil, fmt.Errorf("reddit blocked the request to %s (403), configure `app-auth` to use the official API", requestURL)
+			return nil, fmt.Errorf("reddit blocked the request to %s (403), set `redlib-url` or configure `app-auth`", requestURL)
 		}
 		return nil, err
 	}
