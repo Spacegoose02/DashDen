@@ -244,7 +244,7 @@ func (p *widgetProviders) SecureImageURLWithMaxAge(ctx context.Context, imageURL
 		}
 	}
 
-	return p.baseURL + "/api/image-proxy/" + hash
+	return p.baseURL + "/api/image-proxy/" + hash + imageProxyURLVersion // DashDen
 }
 
 func (w *widgetBase) requiresUpdate(now *time.Time) bool {

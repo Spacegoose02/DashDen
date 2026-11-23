@@ -139,7 +139,7 @@ func (c *imageCache) downloadAndCacheWithClient(ctx context.Context, rawURL stri
 	req.Header.Set("Accept", "image/*")
 	setBrowserUserAgentHeader(req)
 
-	client := ternary(allowInsecure, defaultInsecureHTTPClient, defaultHTTPClient)
+	client := imageCacheClient(allowInsecure) // DashDen: longer timeout for big images
 	resp, err := client.Do(req)
 	if err != nil {
 		return "", err

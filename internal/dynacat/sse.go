@@ -101,42 +101,8 @@ func (a *application) handleImageProxyRequest(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	client := ternary(info.AllowInsecure, publicOnlyInsecureHTTPClient, publicOnlyHTTPClient)
-	req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, info.URL, nil)
-	if err != nil {
-		http.Error(w, "Failed to fetch image", http.StatusInternalServerError)
-		return
-	}
-
-	req.Header.Set("Accept", "image/*")
-	setBrowserUserAgentHeader(req)
-
-	resp, err := client.Do(req)
-	if err != nil {
-		http.Error(w, "Failed to fetch image", http.StatusInternalServerError)
-		return
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		http.Error(w, "Image not found", http.StatusNotFound)
-		return
-	}
-
-	// The proxied URL comes from remote widget content, so reflecting its content type would
-	// let an upstream serve HTML from this origin.
-	contentType := resp.Header.Get("Content-Type")
-	if extensionFromContentType(contentType) == "" {
-		http.Error(w, "Not an image", http.StatusUnsupportedMediaType)
-		return
-	}
-
-	w.Header().Set("Content-Type", contentType)
-	w.Header().Set("Content-Security-Policy", "sandbox")
-	w.Header().Set("Cache-Control", "public, max-age=2592000, immutable")
-	w.WriteHeader(http.StatusOK)
-
-	io.Copy(w, io.LimitReader(resp.Body, maxResponseBytes))
+	// DashDen: reads the whole image before answering (image-fetch.go).
+	a.serveProxiedImage(w, r, info)
 }
 
 // The typed query is applied to RawQuery only, so it can never alter the host or path being fetched.
