@@ -29,6 +29,7 @@ New behaviour goes in **new files**. An upstream file only gets a short hook tha
 | Include values (`with:` and `${arg:name}`) for reusable widget files | `config-include-args.go` | `configuration.md` |
 | DashDen look and branding: logo, favicon, app icon | `static/css/dashden.css`, `static/logo.png`, `static/favicon.png`, `static/app-icon.png` | |
 | Fast startup: icons on disk used at once, missing ones fetched in the background | `image-cache-background.go` | |
+| Feed thumbnails: big images get time to download, the image proxy never sends half an image, and a picture that fails to load shows the placeholder instead of collapsing | `image-fetch.go`, `static/js/thumbnail-fallback.js` | |
 | Error page instead of exiting when the config is broken at startup | `config-error-page.go` | `configuration.md` |
 | Pages answer within 3 seconds; slow widgets show a placeholder | `page-progressive.go` | |
 | Short, readable widget errors | `widget-friendly-error.go` | |
@@ -81,6 +82,10 @@ These are where upstream merges can conflict. Paths are under `internal/dynacat/
 | `static/js/todo.js` | Sends `X-DashDen-Tab` when saving and reloads the list on `dashden:todo-changed` | Re-apply if upstream rewrites server storage |
 | `config-fields.go` | `customIconField.cacheURL` calls `cachedIconURL` instead of downloading | One call |
 | `image_cache.go` | `IsBuildingCache` leaves background icon downloads out | One line |
+| `image_cache.go` (downloads) | Downloads use `imageCacheClient` (15 s instead of 5 s) | One line |
+| `sse.go` (image proxy) | `handleImageProxyRequest` hands the fetch to `serveProxiedImage` after its checks | Keep the auth and `validatePublicFetchURL` checks ahead of the call |
+| `widget.go` (image proxy) | `SecureImageURLWithMaxAge` adds `imageProxyURLVersion` to proxy addresses | One line |
+| `templates/page.html` (thumbnails) | `thumbnail-fallback.js` script | One line |
 | `templates/page-content.html` | Widgets render through `$.RenderWidget`; `page-columns-bento` class and `BentoAttrs` | Three lines |
 | `templates/widget-base.html` | Friendly error block instead of the ERROR banner; `TileAttrs` | Re-apply if upstream changes the error block |
 | `templates.go` | `friendlyWidgetError` template function | One line |
