@@ -2577,17 +2577,51 @@ Display a list of posts from a specific subreddit.
 
 > [!WARNING]
 >
-> Reddit does not allow unauthorized API access from VPS IPs, if you're hosting Dynacat on a VPS you will get a 403
-> response. As a workaround you can either [register an app on Reddit](https://ssl.reddit.com/prefs/apps/) and use the
-> generated ID and secret in the widget configuration to authenticate your requests (see `app-auth` property), use a proxy
-> (see `proxy` property) or route the traffic from Dynacat through a VPN.
+> Reddit ended its RSS feeds on November 13, 2026, blocks signed-out API requests, and no longer lets people register
+> new API apps. The public API is due to close for everyone in March 2027. The reliable way to keep this widget working
+> is to run [Redlib](https://github.com/redlib-org/redlib) next to DashDen and point the widget at it with `redlib-url`.
+> If you already have an approved Reddit app, `app-auth` keeps working until Reddit shuts it off.
 
 Example:
 
 ```yaml
 - type: reddit
   subreddit: technology
+  redlib-url: http://192.168.1.10:8080
 ```
+
+#### Reading Reddit through Redlib
+
+Redlib is a self-hosted Reddit front end. It can publish any subreddit as an RSS feed, which this widget reads. Run it as
+a container (on Unraid, add it from Community Apps or use a compose file like this one):
+
+```yaml
+services:
+  redlib:
+    image: quay.io/redlib/redlib:latest
+    restart: unless-stopped
+    ports:
+      - 8080:8080
+    environment:
+      REDLIB_ENABLE_RSS: "on"
+      REDLIB_FULL_URL: http://192.168.1.10:8080
+```
+
+`REDLIB_ENABLE_RSS` is required; without it Redlib answers feed requests with a web page. `REDLIB_FULL_URL` makes the
+links inside the feeds absolute, which other feed readers such as FreshRSS need. If upstream Redlib stops loading posts,
+the `ghcr.io/nachtalb/redlib:latest` fork usually has Reddit's latest workaround first.
+
+The same feeds work in any feed reader:
+
+```
+http://192.168.1.10:8080/r/selfhosted.rss
+http://192.168.1.10:8080/r/selfhosted.rss?sort=new
+http://192.168.1.10:8080/r/selfhosted.rss?sort=top&t=week
+http://192.168.1.10:8080/r/selfhosted+homelab.rss
+```
+
+Feeds don't include points or comment counts, so those are hidden and `extra-sort-by: engagement` has no effect. `search`
+needs `app-auth`. Links to comments open in Redlib unless you set `comments-url-template`.
 
 #### Properties
 | Name | Type | Required | Default |
@@ -2606,6 +2640,7 @@ Example:
 | search | string | no | |
 | extra-sort-by | string | no | |
 | app-auth | object | no | |
+| redlib-url | string | no | |
 
 ##### `subreddit`
 The subreddit for which to fetch the posts from.
@@ -2715,6 +2750,11 @@ Can be used to specify an additional sort which will be applied on top of the al
 
 The `engagement` sort tries to place the posts with the most points and comments on top, also prioritizing recent over old posts.
 
+##### `redlib-url`
+The address of your Redlib instance, such as `http://192.168.1.10:8080`. Posts are read from its RSS feed instead of
+from Reddit. When `app-auth` is also set, the Reddit API is tried first and Redlib is the fallback. See
+[Reading Reddit through Redlib](#reading-reddit-through-redlib).
+
 ##### `app-auth`
 ```yaml
 widgets:
@@ -2726,9 +2766,9 @@ widgets:
       secret: ${REDDIT_APP_SECRET}
 ```
 
-To register an app on Reddit, go to [this page](https://ssl.reddit.com/prefs/apps/), create a `script` type app and use its name, client ID (shown under the app name) and secret.
+Use the name, client ID (shown under the app name) and secret of a `script` type app from [your Reddit apps page](https://ssl.reddit.com/prefs/apps/).
 
-This is the most reliable way to use the widget, since requests go through Reddit's official API instead of the public JSON endpoints. If the widget shows `reddit blocked the request`, Reddit is refusing unauthenticated access from your IP and `app-auth` is the recommended fix.
+Reddit stopped letting people create new apps there in November 2025, and plans to end public API access in March 2027, so this only helps if you already have an approved app. If the widget shows `reddit blocked the request`, set `redlib-url` instead.
 
 ### Releases
 Display a list of latest releases for specific repositories on Github, GitLab, Codeberg or Docker Hub.
