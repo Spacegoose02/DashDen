@@ -157,3 +157,23 @@
 .offline-badge[hidden] {
     display: none;
 }
+
+/* Show more / Show less arrow. Upstream draws it with a private-use glyph
+   that only JetBrains Mono has; other theme fonts show an empty box. */
+.expand-toggle-button-icon::before {
+    content: '';
+    width: 0.55rem;
+    height: 0.55rem;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: rotate(45deg);
+    position: relative;
+    top: -0.1rem;
+}
+
+.expand-toggle-button.container-expanded .expand-toggle-button-icon::before {
+    transform: rotate(-135deg);
+    top: 0.2rem;
+}
+
+@import "dashden-monitor.css";

@@ -16,8 +16,9 @@ var intl = message.NewPrinter(language.English)
 
 var globalTemplateFunctions = template.FuncMap{
 	"friendlyWidgetError": friendlyWidgetError,
-	"formatApproxNumber": formatApproxNumber,
-	"formatNumber":       intl.Sprint,
+	"monogram":            monogram,
+	"formatApproxNumber":  formatApproxNumber,
+	"formatNumber":        intl.Sprint,
 	"containsStr": func(str, substr string) bool {
 		return strings.Contains(str, substr)
 	},
