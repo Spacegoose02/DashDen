@@ -988,7 +988,7 @@ func (a *application) writeConfigCandidates(candidates map[string][]byte) error 
 	perms := map[string]os.FileMode{}
 
 	for path, candidate := range candidates {
-		if err := checkIncludesStayInConfigDir(candidate, filepath.Dir(a.configPath)); err != nil {
+		if err := checkIncludesStayInConfigDir(candidate, path, filepath.Dir(a.configPath)); err != nil {
 			return &editorValidationError{err: err, field: "$include"}
 		}
 
@@ -1085,22 +1085,29 @@ func (a *application) writeEditorDocs(docs *editorDocs) error {
 }
 
 // Second line of defence behind rejectIncludeDirective, covering anything the editor writes.
-func checkIncludesStayInConfigDir(candidate []byte, dir string) error {
+// Relative includes resolve against the including file's own directory, matching the loader,
+// so a file in a subfolder can reach a sibling folder with ../ and still stay inside dir.
+func checkIncludesStayInConfigDir(candidate []byte, filePath, dir string) error {
 	absDir, err := filepath.Abs(dir)
 	if err != nil {
 		return err
 	}
+	absFile, err := filepath.Abs(filePath)
+	if err != nil {
+		return err
+	}
+	fileDir := filepath.Dir(absFile)
 
 	for _, match := range configIncludePattern.FindAllSubmatch(candidate, -1) {
 		target := strings.TrimSpace(string(match[2]))
 
 		path := target
 		if !filepath.IsAbs(path) {
-			path = filepath.Join(absDir, path)
+			path = filepath.Join(fileDir, path)
 		}
 
-		abs, err := filepath.Abs(path)
-		if err != nil || !strings.HasPrefix(abs, absDir+string(filepath.Separator)) {
+		rel, err := filepath.Rel(absDir, filepath.Clean(path))
+		if err != nil || rel == "." || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) || filepath.IsAbs(rel) {
 			return fmt.Errorf("include %q is outside the config directory", target)
 		}
 	}
