@@ -69,6 +69,7 @@ These are where upstream merges can conflict. Paths are under `internal/dynacat/
 | `widget-container.go` | `checkNestedWidgetAccess` for groups and split columns | Small |
 | `widget-search.go` | Widgets limited to some people stay out of search | Small |
 | `widget-todo.go` | `per-person` option | Small |
+| `widget-rss.go` | `rssFeedItem.Author`, filled from the item's author (news-coverage names video outlets by channel) | Two lines |
 | `templates/monitor.html` | `monitor-sites` class on the list, `data-status` on each row, icon wrapped in `monitor-site-icon-box` with a `monogram` letter and an `onerror` that shows the letter | Re-apply the three hooks |
 | `templates.go` | `monogram` in `globalTemplateFunctions` | One line |
 | `widget-reddit.go` | `redlib-url` field, `initializeRedlib` call, `update` gets posts from `fetchRedditPosts` (which now holds the old RSS fallback), 403 hint names `redlib-url` | If upstream changes the fallback in `update`, move it into `fetchRedditPosts` |

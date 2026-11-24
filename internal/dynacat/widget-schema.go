@@ -206,7 +206,7 @@ var fieldAnnotations = map[string]map[string]fieldAnnotation{
 	},
 	"news-coverage": {
 		"feeds.url":             {Hint: "In FreshRSS, open a saved query, choose Share and copy its RSS link."},
-		"sources":               {Hint: "Rate outlets by domain, e.g. localpaper.com: lean-right. Use left, lean-left, center, lean-right or right."},
+		"sources":               {Hint: "Rate outlets by domain, e.g. localpaper.com: lean-right, or video channels by name. Use left, lean-left, center, lean-right or right."},
 		"window":                {Hint: "How far back to look, e.g. 48h."},
 		"min-sources":           {Hint: "2 hides stories only one outlet ran."},
 		"builtin-ratings":       {Advanced: true},

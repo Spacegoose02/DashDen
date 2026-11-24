@@ -213,3 +213,76 @@ func TestNewsCoverageClusteringSample(t *testing.T) {
 		t.Errorf("got %d stories, want 10", len(stories))
 	}
 }
+
+// Two takes on one event, each covered by several outlets, should end up as one story;
+// two different events about the same people should not.
+func TestNewsCoverageMergesNearDuplicateStories(t *testing.T) {
+	titles := []string{
+		"Nvidia stock surges as Jensen Huang rehired. Thank you, Trump!",
+		"Nvidia shares jump after Jensen Huang rehired as CEO",
+		"Nvidia stock soars on Jensen Huang's return",
+		"Trump faces backlash after saying he 'convinced' Nvidia to reinstate CEO Jensen Huang",
+		"Trump claims credit for Nvidia reinstating Jensen Huang",
+		"Critics question Trump's role in Jensen Huang returning to Nvidia",
+		"Trump announces new tariffs on Chinese electronics",
+		"Trump slaps 25% tariffs on Chinese electronics imports",
+		"Trump threatens tariffs on Canadian lumber",
+		"Canada responds to Trump's lumber tariff threat",
+		"Weather threatens Macy's Thanksgiving Day Parade",
+		"Pope Francis' private diary reveals visions of the devil",
+	}
+	var as []*newsArticle
+	for i, ti := range titles {
+		as = append(as, &newsArticle{Title: ti, Outlet: fmt.Sprint(i), PublishedAt: time.Now().Add(time.Duration(i) * time.Minute), tokens: newsTitleTokens(ti)})
+	}
+	stories := clusterNewsArticles(as, 0.4)
+	storyOf := map[string]*newsStory{}
+	for _, s := range stories {
+		for _, a := range s.Articles {
+			storyOf[a.Title] = s
+		}
+	}
+	for i := 1; i <= 5; i++ {
+		if storyOf[titles[0]] != storyOf[titles[i]] {
+			t.Errorf("want %q in the Nvidia story", titles[i])
+		}
+	}
+	if storyOf[titles[6]] == storyOf[titles[8]] {
+		t.Error("China and Canada tariff stories were merged")
+	}
+	if storyOf[titles[0]] == storyOf[titles[6]] {
+		t.Error("Nvidia and tariff stories were merged")
+	}
+}
+
+func TestNewsCoverageRatesVideosByChannel(t *testing.T) {
+	feed := `<?xml version="1.0"?><rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/"><channel><title>FreshRSS videos</title><link>https://rss.example</link>` +
+		fmt.Sprintf(`<item><title>Senate passes infrastructure bill in late-night vote</title><link>https://www.youtube.com/watch?v=a1</link><dc:creator>NBC News NOW</dc:creator><pubDate>%[1]s</pubDate></item>
+<item><title>Senate passes infrastructure bill after late-night vote</title><link>https://www.youtube.com/watch?v=a2</link><dc:creator>Fox News</dc:creator><pubDate>%[1]s</pubDate></item>
+<item><title>Infrastructure bill passes Senate: what's in it</title><link>https://youtu.be/a3</link><dc:creator>Breaking Points</dc:creator><pubDate>%[1]s</pubDate></item>
+<item><title>Senate infrastructure bill vote explained</title><link>https://www.youtube.com/watch?v=a4</link><dc:creator>Some Local Channel</dc:creator><pubDate>%[1]s</pubDate></item>
+</channel></rss>`, time.Now().Add(-time.Hour).Format(time.RFC1123Z))
+	w := newTestNewsCoverageWidget(t, feed, `sources:
+  Some Local Channel: lean-right
+`)
+	got := map[string]newsBias{}
+	for _, s := range w.Stories {
+		for _, a := range s.Articles {
+			got[a.Outlet] = a.Bias
+		}
+	}
+	want := map[string]newsBias{
+		"NBC News":           newsBiasLeanLeft,
+		"Fox News":           newsBiasRight,
+		"Breaking Points":    newsBiasCenter,
+		"Some Local Channel": newsBiasLeanRight,
+	}
+	for outlet, bias := range want {
+		if b, ok := got[outlet]; !ok || b != bias {
+			t.Errorf("%s: got %v (found %v), want %v; all: %v", outlet, b, ok, bias, got)
+		}
+	}
+	if len(w.Stories) != 1 || w.Stories[0].Outlets != 4 {
+		t.Errorf("want one story with 4 outlets, got %d stories", len(w.Stories))
+	}
+}

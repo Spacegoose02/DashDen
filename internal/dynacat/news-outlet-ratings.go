@@ -122,6 +122,7 @@ var builtinNewsOutlets = map[string]builtinOutlet{
 	"haaretz.com":         {"Haaretz", nbLL, "high"},
 
 	// US broadcast and cable
+	"today.com":        {"TODAY", nbLL, "high"},
 	"cnn.com":          {"CNN", nbLL, "mixed"},
 	"msnbc.com":        {"MSNBC", nbL, "mixed"},
 	"nbcnews.com":      {"NBC News", nbLL, "high"},
@@ -239,4 +240,52 @@ var builtinNewsOutlets = map[string]builtinOutlet{
 	"nature.com":             {"Nature", nbC, "high"},
 	"science.org":            {"Science", nbC, "high"},
 	"newscientist.com":       {"New Scientist", nbLL, "high"},
+}
+
+// newsChannelDomains maps video channel names (as newsNameKey gives them) to the outlet's
+// domain, for channels whose name differs from the outlet's.
+var newsChannelDomains = map[string]string{
+	"nbcnewsnow": "nbcnews.com", "meetthepress": "nbcnews.com", "today": "today.com",
+	"abcnews": "abcnews.go.com", "goodmorningamerica": "abcnews.go.com",
+	"60minutes": "cbsnews.com", "cbsmornings": "cbsnews.com", "facethenation": "cbsnews.com",
+	"pbsnewshour": "pbs.org", "frontline": "pbs.org",
+	"bbcnews": "bbc.com", "dwnews": "dw.com", "aljazeeraenglish": "aljazeera.com",
+	"france24english": "france24.com", "skynews": "skynews.com", "skynewsaustralia": "news.com.au",
+	"associatedpress": "apnews.com", "wallstreetjournal": "wsj.com", "wsj": "wsj.com",
+	"bloombergtelevision": "bloomberg.com", "bloomberg": "bloomberg.com", "bloomberg_originals": "bloomberg.com",
+	"cnbctelevision": "cnbc.com", "cnbcinternational": "cnbc.com", "guardiannews": "theguardian.com",
+	"newyorktimes": "nytimes.com", "nytimes": "nytimes.com", "livenowfromfox": "foxnews.com",
+	"foxnews": "foxnews.com", "newsmaxtv": "newsmax.com", "newsmax": "newsmax.com",
+	"forbesbreakingnews": "forbes.com", "cspan": "c-span.org", "reasontv": "reason.com",
+	"economist": "economist.com", "cbcnews": "cbc.ca", "cbcnewsthenational": "cbc.ca",
+	"globalnews": "globalnews.ca", "abcnewsindepth": "abc.net.au", "abcnewsaustralia": "abc.net.au",
+	"msnbc": "msnbc.com", "msnow": "msnbc.com", "thehill": "thehill.com", "hill": "thehill.com",
+	"risingthehill": "thehill.com", "dailycaller": "dailycaller.com", "theblaze": "theblaze.com",
+	"blazetv": "theblaze.com", "epochtv": "theepochtimes.com", "ntd": "theepochtimes.com",
+	"democracynow": "democracynow.org", "vox": "vox.com",
+	"bulwark": "thebulwark.com", "dispatch": "thedispatch.com", "nationalreview": "nationalreview.com",
+	"thefreepress": "thefp.com", "freepress": "thefp.com", "politico": "politico.com", "axios": "axios.com",
+	"newyorkpost": "nypost.com", "washingtonpost": "washingtonpost.com", "dailywire": "dailywire.com",
+}
+
+// builtinNewsChannels rates news shows that live mostly on video sites and have no
+// news website of their own. Like the outlets above, these are DashDen's rough
+// placements; override them with the widget's sources option.
+var builtinNewsChannels = map[string]builtinOutlet{
+	"The Young Turks":        {"", nbL, "mixed"},
+	"MeidasTouch":            {"", nbL, "mixed"},
+	"Brian Tyler Cohen":      {"", nbL, "mixed"},
+	"Pod Save America":       {"", nbL, "mixed"},
+	"Breaking Points":        {"", nbC, "mixed"},
+	"TLDR News":              {"", nbC, "high"},
+	"Philip DeFranco":        {"", nbC, "mixed"},
+	"Tangle":                 {"", nbC, "high"},
+	"Ben Shapiro":            {"", nbR, "mixed"},
+	"Tucker Carlson":         {"", nbR, "low"},
+	"Tucker Carlson Network": {"", nbR, "low"},
+	"Megyn Kelly":            {"", nbR, "mixed"},
+	"The Megyn Kelly Show":   {"", nbR, "mixed"},
+	"Steven Crowder":         {"", nbR, "low"},
+	"Matt Walsh":             {"", nbR, "mixed"},
+	"Glenn Beck":             {"", nbR, "mixed"},
 }
