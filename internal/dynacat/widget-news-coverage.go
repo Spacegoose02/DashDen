@@ -35,11 +35,12 @@ type newsCoverageWidget struct {
 	Similarity     float64                     `yaml:"similarity"`
 	HideBalance    bool                        `yaml:"hide-balance"`
 
-	Stories    []*newsStory          `yaml:"-"`
-	Blindspots []*newsStory          `yaml:"-"`
-	Balance    newsCoverage          `yaml:"-"`
-	feeds      *rssWidget            `yaml:"-"`
-	outlets    map[string]newsOutlet `yaml:"-"`
+	Stories    []*newsStory `yaml:"-"`
+	Blindspots []*newsStory `yaml:"-"`
+	Balance    newsCoverage `yaml:"-"`
+	feeds      *rssWidget   `yaml:"-"`
+	outlets    map[string]newsOutlet
+	channels   map[string]newsOutlet `yaml:"-"`
 }
 
 // newsSourceRating is one entry of the `sources` option. It can be written as just the
@@ -160,7 +161,24 @@ func (widget *newsCoverageWidget) initialize() error {
 			widget.outlets[domain] = newsOutlet{Name: o.name, Bias: o.bias, Factuality: o.factuality}
 		}
 	}
+	widget.channels = make(map[string]newsOutlet)
+	for name, o := range builtinNewsChannels {
+		widget.channels[newsNameKey(name)] = newsOutlet{Name: name, Bias: o.bias, Factuality: o.factuality}
+	}
 	for domain, rating := range widget.Sources {
+		if !strings.Contains(domain, ".") {
+			// A channel or show name, for video feeds: "Breaking Points: center".
+			bias, ok := newsBiasNames[strings.ToLower(strings.TrimSpace(rating.Bias))]
+			if !ok {
+				return fmt.Errorf("sources: %s has bias %q; use left, lean-left, center, lean-right or right", domain, rating.Bias)
+			}
+			name := domain
+			if rating.Name != "" {
+				name = rating.Name
+			}
+			widget.channels[newsNameKey(domain)] = newsOutlet{Name: name, Bias: bias, Factuality: strings.ToLower(rating.Factuality)}
+			continue
+		}
 		domain = normalizeNewsDomain(domain)
 		bias := newsBiasUnrated
 		if rating.Bias != "" {
@@ -285,6 +303,36 @@ func (widget *newsCoverageWidget) articleFromItem(item *rssFeedItem) *newsArticl
 		}
 	}
 
+	// Video sites: every link is youtube.com, so the channel is the outlet. Through
+	// FreshRSS the channel is the item's author; in a channel's own feed it's the title.
+	if newsVideoHosts[domain] {
+		channel := ""
+		for _, name := range []string{item.Author, item.ChannelName} {
+			if name = strings.TrimSpace(name); name == "" {
+				continue
+			}
+			if o, ok := widget.channels[newsNameKey(name)]; ok {
+				a.Outlet, a.Bias, a.Factuality = o.Name, o.Bias, o.Factuality
+				a.domain = "channel:" + newsNameKey(o.Name)
+				a.tokens = newsTitleTokens(a.Title)
+				return a
+			}
+			if d, ok := widget.outletByName(name); ok {
+				domain, channel = d, ""
+				break
+			}
+			if channel == "" {
+				channel = name
+			}
+		}
+		if channel != "" {
+			a.Outlet = channel
+			a.domain = "channel:" + newsNameKey(channel)
+			a.tokens = newsTitleTokens(a.Title)
+			return a
+		}
+	}
+
 	a.domain = domain
 	if o, d, ok := widget.lookupOutlet(domain); ok {
 		a.domain = d
@@ -322,13 +370,36 @@ func (widget *newsCoverageWidget) lookupOutlet(domain string) (newsOutlet, strin
 }
 
 func (widget *newsCoverageWidget) outletByName(name string) (string, bool) {
-	name = strings.ToLower(strings.TrimPrefix(strings.TrimSpace(name), "The "))
+	key := newsNameKey(name)
+	if key == "" {
+		return "", false
+	}
+	if d, ok := newsChannelDomains[key]; ok {
+		if _, rated := widget.outlets[d]; rated {
+			return d, true
+		}
+	}
 	for d, o := range widget.outlets {
-		if strings.ToLower(strings.TrimPrefix(o.Name, "The ")) == name {
+		if newsNameKey(o.Name) == key {
 			return d, true
 		}
 	}
 	return "", false
+}
+
+var newsNameKeyStrip = regexp.MustCompile(`[^a-z0-9]+`)
+
+// newsNameKey makes outlet and channel names comparable: "The Daily Wire" and
+// "daily wire" both become "dailywire".
+func newsNameKey(name string) string {
+	name = strings.ToLower(strings.TrimSpace(name))
+	name = strings.TrimPrefix(name, "the ")
+	return newsNameKeyStrip.ReplaceAllString(name, "")
+}
+
+var newsVideoHosts = map[string]bool{
+	"youtube.com": true, "youtu.be": true, "music.youtube.com": true, "vimeo.com": true,
+	"rumble.com": true, "odysee.com": true, "dailymotion.com": true, "tiktok.com": true,
 }
 
 func normalizeNewsDomain(host string) string {
@@ -437,6 +508,8 @@ func clusterNewsArticles(articles []*newsArticle, threshold float64) []*newsStor
 		}
 	}
 
+	stories = mergeNewsStories(stories)
+
 	sort.SliceStable(stories, func(i, j int) bool {
 		ci, cj := newsDistinctOutlets(stories[i]), newsDistinctOutlets(stories[j])
 		if ci != cj {
@@ -446,6 +519,75 @@ func clusterNewsArticles(articles []*newsArticle, threshold float64) []*newsStor
 	})
 	return stories
 }
+
+// mergeNewsStories joins stories that are about the same event but were worded too
+// differently to match headline by headline, such as "Nvidia stock surges as Jensen Huang
+// rehired" and "Trump says he convinced Nvidia to reinstate Jensen Huang". Each story is
+// reduced to its core words, the ones at least half its headlines use, and two stories
+// merge when they share at least three core words and those carry most of the weight.
+func mergeNewsStories(stories []*newsStory) []*newsStory {
+	type core struct {
+		vec map[string]float64
+		sum float64
+	}
+	coreOf := func(s *newsStory) core {
+		count := make(map[string]int)
+		weight := make(map[string]float64)
+		for _, a := range s.Articles {
+			for t, v := range a.vec {
+				count[t]++
+				weight[t] = v
+			}
+		}
+		c := core{vec: make(map[string]float64)}
+		for t, n := range count {
+			if n*2 >= len(s.Articles) {
+				c.vec[t] = weight[t]
+				c.sum += weight[t]
+			}
+		}
+		return c
+	}
+
+	cores := make([]core, len(stories))
+	for i, s := range stories {
+		cores[i] = coreOf(s)
+	}
+
+	for merged := true; merged; {
+		merged = false
+		for i := 0; i < len(stories) && !merged; i++ {
+			for j := i + 1; j < len(stories); j++ {
+				a, b := cores[i], cores[j]
+				if a.sum == 0 || b.sum == 0 {
+					continue
+				}
+				shared, weight := 0, 0.0
+				for t, v := range a.vec {
+					if bv, ok := b.vec[t]; ok {
+						shared++
+						weight += v + bv
+					}
+				}
+				if shared < 3 || weight/(a.sum+b.sum) < newsStoryMergeThreshold {
+					continue
+				}
+				stories[i].Articles = append(stories[i].Articles, stories[j].Articles...)
+				if stories[j].Latest.After(stories[i].Latest) {
+					stories[i].Latest = stories[j].Latest
+				}
+				stories = append(stories[:j], stories[j+1:]...)
+				cores = append(cores[:j], cores[j+1:]...)
+				cores[i] = coreOf(stories[i])
+				merged = true
+				break
+			}
+		}
+	}
+	return stories
+}
+
+const newsStoryMergeThreshold = 0.5
 
 // newsHeadlineMatch is the weighted Dice similarity of two headlines, from 0 to 1. It is
 // 0 when they share fewer than two words.
@@ -504,6 +646,17 @@ func newsTitleTokens(text string) map[string]float64 {
 		}
 		if alias, ok := newsTokenAliases[t]; ok {
 			t = alias
+		} else if !isNumber {
+			// "returning" and "returned" both become "return".
+			switch {
+			case len(t) >= 7 && strings.HasSuffix(t, "ing"):
+				t = t[:len(t)-3]
+			case len(t) >= 6 && strings.HasSuffix(t, "ed") && !strings.HasSuffix(t, "eed"):
+				t = t[:len(t)-2]
+			}
+			if alias, ok := newsTokenAliases[t]; ok {
+				t = alias
+			}
 		}
 		tokens[t] = 1
 	}
@@ -525,6 +678,8 @@ var newsTokenAliases = map[string]string{
 	"tariff": "tariff", "trade": "tariff", "shutdown": "shutdown", "spending": "budget",
 	"killed": "kill", "killing": "kill", "dead": "kill", "death": "kill", "die": "kill", "died": "kill",
 	"strike": "attack", "attacked": "attack", "airstrike": "attack",
+	"rehire": "rehire", "rehired": "rehire", "reinstate": "rehire", "reinstated": "rehire", "reinstating": "rehire",
+	"fired": "fire", "oust": "fire", "ousted": "fire", "ouster": "fire", "chief": "ceo",
 	"approve": "pass", "approved": "pass", "passed": "pass", "passe": "pass", "clear": "pass", "clears": "pass",
 	"rate": "rate", "unchanged": "steady", "hold": "steady", "holds": "steady", "keep": "steady",
 }
@@ -538,7 +693,7 @@ such than that the their them then there these they this those through to too un
 was we were what when where which while who whom why will with would you your says said say report
 reports reported after amid over first last latest live update updates watch video photos new year
 years day days week weeks back get gets got make makes made take takes may might could one two
-just like via here's what's know need want see sees`
+just like via here's what's know need want see sees saying thank thanks`
 	m := make(map[string]bool)
 	for _, w := range strings.Fields(words) {
 		m[w] = true

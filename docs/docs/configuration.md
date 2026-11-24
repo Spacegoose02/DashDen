@@ -2072,6 +2072,8 @@ Groups headlines from your news feeds into stories and shows how each story is c
 
 The outlet is worked out from each article's link, so feeds that pass through an aggregator still work. With FreshRSS, open a saved query, choose **Share**, turn on RSS and paste the link here. Google News feeds work too: the outlet's name at the end of the headline is used.
 
+Video feeds work too. For YouTube, Vimeo, Rumble and other video links, the channel is the outlet: the item's author when it comes through FreshRSS, or the feed's title for a channel's own feed. Channels of news outlets ("NBC News NOW", "PBS NewsHour", "LiveNOW from FOX") use that outlet's rating, and a few video-only shows have ratings built in. Rate any other channel by name under `sources`.
+
 Example:
 
 ```yaml
@@ -2085,6 +2087,7 @@ Example:
   sources:
     localpaper.com: lean-right
     citynews.org: { bias: center, name: City News, factuality: high }
+    Some YouTube Channel: lean-left
 ```
 
 #### Properties
@@ -2107,7 +2110,7 @@ Example:
 The same as the [RSS widget's `feeds`](#rss): each entry takes `url`, and optionally `title`, `limit` and `headers`.
 
 ##### `sources`
-Rate outlets the built-in list misses, or change a rating you disagree with. The key is the outlet's web domain (subdomains match, so `cnn.com` also covers `edition.cnn.com`). The value is a lean, `left`, `lean-left`, `center`, `lean-right` or `right`, or a map with `bias`, `name` and `factuality`.
+Rate outlets the built-in list misses, or change a rating you disagree with. The key is the outlet's web domain (subdomains match, so `cnn.com` also covers `edition.cnn.com`). The value is a lean, `left`, `lean-left`, `center`, `lean-right` or `right`, or a map with `bias`, `name` and `factuality`. A key without a dot is a video channel's name, such as `Breaking Points: center`.
 
 ##### `builtin-ratings`
 DashDen ships rough ratings for about 150 well-known outlets, placed where public media-bias charts commonly put them. They are DashDen's own estimates, not any rating service's data. Set this to `false` to use only your `sources`.
@@ -2122,7 +2125,7 @@ Only show stories covered by at least this many outlets. `2` hides stories only 
 A story is a blindspot when at least `blindspot-min-sources` rated outlets cover it and at least this share of them (0.8 means 80%) are from one side.
 
 ##### `similarity`
-How alike two headlines must be to count as the same story, from 0 to 1. Lower it if one story shows up as several, raise it if different stories get grouped.
+How alike two headlines must be to count as the same story, from 0 to 1. Lower it if one story shows up as several, raise it if different stories get grouped. After this, stories that share most of their key words (at least three) are joined too, so two angles on one event end up together.
 
 ### Extension
 Display a widget provided by an external source (3rd party). If you want to learn more about developing extensions, checkout the [extensions documentation](extensions.md) (WIP).

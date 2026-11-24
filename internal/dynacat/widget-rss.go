@@ -151,6 +151,7 @@ type cachedRSSFeed struct {
 
 type rssFeedItem struct {
 	ChannelName string
+	Author      string // DashDen: news-coverage names video outlets by channel
 	ChannelURL  string
 	Title       string
 	Link        string
@@ -344,6 +345,10 @@ func (widget *rssWidget) fetchItemsFromFeedTask(request rssFeedRequest) ([]rssFe
 			rssItem.ChannelName = request.Title
 		} else {
 			rssItem.ChannelName = feed.Title
+		}
+
+		if item.Author != nil {
+			rssItem.Author = item.Author.Name
 		}
 
 		if item.Image != nil {
