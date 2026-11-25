@@ -1,6 +1,7 @@
 package dynacat
 
 import (
+	"bytes"
 	"os"
 	"sync"
 	"time"
@@ -31,6 +32,33 @@ func (a *application) ConfigChangeFailed() bool {
 	return getLastConfigError() != nil
 }
 
+var (
+	envWrittenMu sync.Mutex
+	envWritten   []byte
+)
+
+// rememberEnvWrite records what Settings just wrote to config/.env. Settings
+// already reloads after a save, so the watcher skips that change instead of
+// restarting the server a second time while the page is loading.
+func rememberEnvWrite(path string) {
+	data, _ := os.ReadFile(path)
+	envWrittenMu.Lock()
+	envWritten = data
+	envWrittenMu.Unlock()
+}
+
+func envChangeIsOurs(path string) bool {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return false
+	}
+	envWrittenMu.Lock()
+	defer envWrittenMu.Unlock()
+	ours := envWritten != nil && bytes.Equal(data, envWritten)
+	envWritten = nil
+	return ours
+}
+
 // watchEnvFile calls onChange when config/.env is created, edited or removed.
 // It polls, since the file is often replaced rather than written in place.
 func watchEnvFile(configPath string, onChange func()) func() {
@@ -58,6 +86,9 @@ func watchEnvFile(configPath string, onChange func()) func() {
 					continue
 				}
 				lastMod, lastSize = mod, size
+				if envChangeIsOurs(path) {
+					continue
+				}
 				onChange()
 			}
 		}

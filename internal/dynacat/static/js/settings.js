@@ -17,11 +17,21 @@ async function call(method, path, body) {
         options.headers["Content-Type"] = "application/json";
         options.body = JSON.stringify(body);
     }
-    const response = await fetch(API + path, options);
+    let response;
+    try {
+        response = await fetch(API + path, options);
+    } catch (e) {
+        throw new Error("DashDen didn't answer. It may be restarting, try again in a moment.");
+    }
     let data = {};
     try { data = await response.json(); } catch (e) {}
     if (!response.ok) {
-        const err = new Error(data.error || response.statusText);
+        // A reverse proxy answers 502-504 with no JSON while DashDen restarts,
+        // and over HTTP/2 statusText is empty, so never show a blank reason.
+        const restarting = [502, 503, 504].includes(response.status) && !data.error;
+        const err = new Error(restarting
+            ? "DashDen is restarting, try again in a moment."
+            : data.error || response.statusText || `HTTP ${response.status}`);
         err.status = response.status;
         err.data = data;
         throw err;
@@ -46,13 +56,19 @@ function button(label, onClick, danger = false) {
 }
 
 // Wait for the server to come back after a reload-triggering change.
+// The old server can still answer right after a save, so it waits until the
+// server has answered several checks in a row.
 async function waitForReload() {
+    let healthy = 0;
     for (let i = 0; i < 40; i++) {
         await new Promise((r) => setTimeout(r, 500));
         try {
             const r = await fetch(pageData.baseURL + "/api/healthz", { cache: "no-store" });
-            if (r.ok) return;
-        } catch (e) {}
+            healthy = r.ok ? healthy + 1 : 0;
+        } catch (e) {
+            healthy = 0;
+        }
+        if (healthy >= 3) return;
     }
 }
 

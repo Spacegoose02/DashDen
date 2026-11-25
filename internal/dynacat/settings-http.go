@@ -231,6 +231,8 @@ func (a *application) handleSettingsSecretSet(w http.ResponseWriter, r *http.Req
 		return
 	}
 	slog.Info("Secret saved from Settings", "name", name)
+	// This save reloads below, so the .env watcher shouldn't restart it again.
+	rememberEnvWrite(managedSecretsPath(a.configPath))
 	writeJSON(w, http.StatusOK, map[string]any{"saved": name, "reloading": true})
 	reloadSoon()
 }
@@ -246,6 +248,7 @@ func (a *application) handleSettingsSecretDelete(w http.ResponseWriter, r *http.
 		return
 	}
 	slog.Info("Secret removed from Settings", "name", name)
+	rememberEnvWrite(managedSecretsPath(a.configPath))
 	writeJSON(w, http.StatusOK, map[string]any{"removed": name, "reloading": true})
 	reloadSoon()
 }
