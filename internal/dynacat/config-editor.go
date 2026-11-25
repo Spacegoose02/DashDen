@@ -639,12 +639,26 @@ func mutateColumns(columns *yaml.Node, m editorMutation, docs *editorDocs) error
 			return errNoIncludeToWriteInto("widget")
 		}
 
+		// Remember the entry the widget should land in front of, by node rather than index: removing the widget
+		// and pruning its emptied include entry can shift positions in the destination list, which is the same
+		// list as the source's outer one when an included widget moves within its column.
+		var anchor *yaml.Node
+		if dstIndex < len(dstSeq.Content) {
+			anchor = dstSeq.Content[dstIndex]
+		}
+
 		slot.seq.Content = removeNode(slot.seq.Content, slot.index)
-		if dstSeq == slot.seq && dstIndex > slot.index {
-			dstIndex--
+		pruneEmptyInclude(slot)
+
+		dstIndex = min(dstIndex, len(dstSeq.Content))
+		if anchor != nil {
+			if at := slices.Index(dstSeq.Content, anchor); at >= 0 {
+				dstIndex = at
+			}
+		} else {
+			dstIndex = len(dstSeq.Content)
 		}
 		dstSeq.Content = insertNode(dstSeq.Content, dstIndex, slot.node)
-		pruneEmptyInclude(slot)
 	default:
 		return fmt.Errorf("unknown op: %s", m.Op)
 	}
